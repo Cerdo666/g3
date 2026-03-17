@@ -6,6 +6,7 @@ Run with:  uv run python setup_mcp_servers.py
 import os
 import subprocess
 import sys
+import shutil
 
 BASE = os.path.dirname(__file__)
 SERVERS_DIR = os.path.join(BASE, "mcp-servers")
@@ -24,6 +25,11 @@ SERVERS = [
 
 def run(cmd: list[str], cwd: str) -> None:
     print(f"  $ {' '.join(cmd)}")
+    # If it's npm, find the full path
+    if cmd[0] == "npm":
+        npm_path = shutil.which("npm")
+        if npm_path:
+            cmd = [npm_path] + cmd[1:]
     subprocess.check_call(cmd, cwd=cwd)
 
 
