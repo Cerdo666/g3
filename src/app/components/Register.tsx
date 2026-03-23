@@ -99,12 +99,12 @@ export default function Register({ onRegister, onCancel, onSwitchToSignIn }: Reg
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-3 mb-4">
               <div className="w-10 h-10 bg-white/20 rounded-md flex items-center justify-center text-lg font-bold overflow-hidden">
-                          <img 
-                            src={logoImage}
-                            alt="OncoQuery Logo"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
+                                        <img 
+                                          src={logoImage}
+                                          alt="OncoQuery Logo"
+                                          className="w-full h-full object-cover"
+                                        />
+                </div>
               <h1 className="text-3xl font-bold text-[#662d3a]" style={{ fontFamily: 'Comfortaa' }}>
                 OncoQuery
               </h1>
