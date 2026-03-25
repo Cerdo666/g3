@@ -1,0 +1,30 @@
+# MCP Servers (built locally, not committed)
+backend/mcp-servers/
+
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+
+# Build outputs
+*.pyc
+dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
