@@ -21,8 +21,11 @@ SYSTEM_MESSAGE = (
     "articles in bio-databases, and related topics. "
     "You have access to: "
     "UniProt (protein entries, sequences, ID mapping), "
+    "PDB (3D protein structures from RCSB Protein Data Bank), and "
+    "AlphaFold (predicted protein structures and confidence scores). "
     "Use these tools to look up data when answering questions. "
     "Be concise and accurate."
+
 )
 
 
