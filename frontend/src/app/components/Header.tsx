@@ -1,4 +1,4 @@
-import { LogOut } from 'lucide-react';
+import { LogOut, FolderOpen, History } from 'lucide-react';
 import logoImage from '../../assets/LogoOncoQuery.png';
 
 interface HeaderProps {
@@ -8,9 +8,11 @@ interface HeaderProps {
   isAuthenticated?: boolean;
   onOpenSignIn?: () => void;
   onOpenRegister?: () => void;
+  onOpenProjects?: () => void;
+  onOpenHistory?: () => void;
 }
 
-export default function Header({ onSignOut, userEmail, userName, isAuthenticated, onOpenSignIn, onOpenRegister }: HeaderProps) {
+export default function Header({ onSignOut, userEmail, userName, isAuthenticated, onOpenSignIn, onOpenRegister, onOpenProjects, onOpenHistory }: HeaderProps) {
   return (
     <header className="bg-[#662d3a] text-white px-6 py-3 flex items-center justify-between">
       <div className="flex items-center gap-4">
@@ -30,6 +32,24 @@ export default function Header({ onSignOut, userEmail, userName, isAuthenticated
         
       </div>
       <div className="flex items-center gap-4">
+        {isAuthenticated && (
+          <>
+            <button
+              onClick={onOpenProjects}
+              className="px-4 py-1.5 border border-white rounded hover:bg-white/10 transition-colors flex items-center gap-2"
+            >
+              <FolderOpen className="w-4 h-4" />
+              <span className="hidden sm:inline">Projects</span>
+            </button>
+            <button
+              onClick={onOpenHistory}
+              className="px-4 py-1.5 border border-white rounded hover:bg-white/10 transition-colors flex items-center gap-2"
+            >
+              <History className="w-4 h-4" />
+              <span className="hidden sm:inline">History</span>
+            </button>
+          </>
+        )}
         {isAuthenticated && userEmail && (
           <div className="hidden sm:flex flex-col items-end">
             <span className="text-sm text-white/90">{userName || userEmail}</span>

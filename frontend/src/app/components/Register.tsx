@@ -63,7 +63,7 @@ export default function Register({ onRegister, onCancel, onSwitchToSignIn }: Reg
   };
 
   return (
-    <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-[#662d3a] to-[#8b4f5a] overflow-hidden relative">
+    <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-[#662d3a] to-[#8b4f5a] overflow-y-auto relative py-4">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <svg className="w-full h-full">
@@ -83,8 +83,8 @@ export default function Register({ onRegister, onCancel, onSwitchToSignIn }: Reg
       </div>
 
       {/* Register Card */}
-      <div className="relative z-10 w-full max-w-md mx-4">
-        <div className="bg-white rounded-lg shadow-2xl p-8 sm:p-10">
+      <div className="relative z-10 w-full max-w-md mx-4 my-auto">
+        <div className="bg-white rounded-lg shadow-2xl p-6 sm:p-8">
           {/* Close Button */}
           {onCancel && (
             <button
@@ -96,27 +96,27 @@ export default function Register({ onRegister, onCancel, onSwitchToSignIn }: Reg
           )}
 
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-white/20 rounded-md flex items-center justify-center text-lg font-bold overflow-hidden">
+          <div className="text-center mb-4">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="w-8 h-8 bg-white/20 rounded-md flex items-center justify-center overflow-hidden">
                                         <img 
                                           src={logoImage}
                                           alt="OncoQuery Logo"
                                           className="w-full h-full object-cover"
                                         />
                 </div>
-              <h1 className="text-3xl font-bold text-[#662d3a]" style={{ fontFamily: 'Comfortaa' }}>
+              <h1 className="text-2xl font-bold text-[#662d3a]" style={{ fontFamily: 'Comfortaa' }}>
                 OncoQuery
               </h1>
             </div>
-            <p className="text-[#6b7280] text-sm">Create your account</p>
+            <p className="text-[#6b7280] text-xs">Create your account</p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             {/* Name Input */}
             <div>
-              <label className="block text-sm font-medium text-[#662d3a] mb-2">
+              <label className="block text-xs font-medium text-[#662d3a] mb-1">
                 Full Name
               </label>
               <div className="relative">
@@ -126,14 +126,14 @@ export default function Register({ onRegister, onCancel, onSwitchToSignIn }: Reg
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="John Doe"
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#662d3a] focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#662d3a] focus:border-transparent transition-all"
                 />
               </div>
             </div>
 
             {/* Email Input */}
             <div>
-              <label className="block text-sm font-medium text-[#662d3a] mb-2">
+              <label className="block text-xs font-medium text-[#662d3a] mb-1">
                 Email Address
               </label>
               <div className="relative">
@@ -143,14 +143,14 @@ export default function Register({ onRegister, onCancel, onSwitchToSignIn }: Reg
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#662d3a] focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#662d3a] focus:border-transparent transition-all"
                 />
               </div>
             </div>
 
             {/* Password Input */}
             <div>
-              <label className="block text-sm font-medium text-[#662d3a] mb-2">
+              <label className="block text-xs font-medium text-[#662d3a] mb-1">
                 Password
               </label>
               <div className="relative">
@@ -160,7 +160,7 @@ export default function Register({ onRegister, onCancel, onSwitchToSignIn }: Reg
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#662d3a] focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-12 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#662d3a] focus:border-transparent transition-all"
                 />
                 <button
                   type="button"
@@ -178,7 +178,7 @@ export default function Register({ onRegister, onCancel, onSwitchToSignIn }: Reg
 
             {/* Confirm Password Input */}
             <div>
-              <label className="block text-sm font-medium text-[#662d3a] mb-2">
+              <label className="block text-xs font-medium text-[#662d3a] mb-1">
                 Confirm Password
               </label>
               <div className="relative">
@@ -188,7 +188,7 @@ export default function Register({ onRegister, onCancel, onSwitchToSignIn }: Reg
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#662d3a] focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-12 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#662d3a] focus:border-transparent transition-all"
                 />
                 <button
                   type="button"
@@ -235,14 +235,14 @@ export default function Register({ onRegister, onCancel, onSwitchToSignIn }: Reg
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 bg-[#662d3a] text-white font-semibold rounded-lg hover:bg-[#7a3544] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2 text-sm bg-[#662d3a] text-white font-semibold rounded-lg hover:bg-[#7a3544] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Creating account...' : 'Create Account'}
             </button>
           </form>
 
           {/* Divider */}
-          <div className="my-6 flex items-center gap-4">
+          <div className="my-3 flex items-center gap-4">
             <div className="flex-1 h-px bg-gray-300" />
             <span className="text-sm text-[#6b7280]">or</span>
             <div className="flex-1 h-px bg-gray-300" />
