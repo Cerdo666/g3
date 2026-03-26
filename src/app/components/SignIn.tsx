@@ -6,9 +6,10 @@ interface SignInProps {
   onSignIn: (email: string) => void;
   onCancel?: () => void;
   onSwitchToRegister?: () => void;
+  onForgotPassword?: () => void;
 }
 
-export default function SignIn({ onSignIn, onCancel, onSwitchToRegister }: SignInProps) {
+export default function SignIn({ onSignIn, onCancel, onSwitchToRegister, onForgotPassword }: SignInProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -153,6 +154,7 @@ export default function SignIn({ onSignIn, onCancel, onSwitchToRegister }: SignI
               </label>
               <button
                 type="button"
+                onClick={onForgotPassword}
                 className="text-[#662d3a] hover:text-[#7a3544] font-medium transition-colors"
               >
                 Forgot password?

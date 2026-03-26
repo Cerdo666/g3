@@ -4,6 +4,9 @@ import Sidebar from './components/Sidebar';
 import ChatMessage from './components/ChatMessage';
 import SignIn from './components/SignIn';
 import Register from './components/Register';
+import Projects from './components/Projects';
+import History from './components/History';
+import ForgotPassword from './components/ForgotPassword';
 import { Send } from 'lucide-react';
 
 export default function App() {
@@ -12,6 +15,9 @@ export default function App() {
   const [userName, setUserName] = useState('');
   const [showSignIn, setShowSignIn] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
+  const [showProjects, setShowProjects] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleSignIn = (email: string) => {
     setUserEmail(email);
@@ -42,6 +48,14 @@ export default function App() {
     setShowSignIn(false);
   };
 
+  const handleOpenProjects = () => {
+    setShowProjects(true);
+  };
+
+  const handleOpenHistory = () => {
+    setShowHistory(true);
+  };
+
   const handleCloseSignIn = () => {
     setShowSignIn(false);
   };
@@ -56,8 +70,13 @@ export default function App() {
         onSignIn={handleSignIn} 
         onCancel={handleCloseSignIn}
         onSwitchToRegister={handleOpenRegister}
+        onForgotPassword={() => { setShowSignIn(false); setShowForgotPassword(true); }}
       />
     );
+  }
+
+  if (showForgotPassword) {
+    return <ForgotPassword onBack={() => { setShowForgotPassword(false); setShowSignIn(true); }} />;
   }
 
   if (showRegister) {
@@ -70,6 +89,14 @@ export default function App() {
     );
   }
 
+  if (showProjects) {
+    return <Projects onClose={() => setShowProjects(false)} />;
+  }
+
+  if (showHistory) {
+    return <History onClose={() => setShowHistory(false)} />;
+  }
+
   return (
     <div className="h-screen w-screen flex flex-col bg-white overflow-hidden">
       <Header 
@@ -79,6 +106,8 @@ export default function App() {
         isAuthenticated={isAuthenticated}
         onOpenSignIn={handleOpenSignIn}
         onOpenRegister={handleOpenRegister}
+        onOpenProjects={handleOpenProjects}
+        onOpenHistory={handleOpenHistory}
       />
 
       <div className="flex-1 flex overflow-hidden min-h-0">
