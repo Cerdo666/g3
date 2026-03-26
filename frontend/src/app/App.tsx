@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ChatMessage from './components/ChatMessage';
@@ -9,15 +9,6 @@ import History from './components/History';
 import ForgotPassword from './components/ForgotPassword';
 import { Send } from 'lucide-react';
 
-interface Message {
-  id: string;
-  type: 'user' | 'ai';
-  content: string;
-  toolCalls?: { name: string; status: 'calling' | 'done' | 'error'; source: string }[];
-}
-
-const API_URL = 'http://localhost:8080';
-
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState('');
@@ -27,18 +18,18 @@ export default function App() {
   const [showProjects, setShowProjects] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputValue, setInputValue] = useState('');
+  const [mcpServers, setMcpServers] = useState<string[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // Load MCP servers from backend
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    fetch('http://localhost:8080/status')
+      .then(r => r.json())
+      .then(data => setMcpServers(data.mcp_servers ?? []))
+      .catch(() => setMcpServers([]));
+  }, []);
 
   const handleSignIn = (email: string) => {
     setUserEmail(email);
@@ -86,69 +77,45 @@ export default function App() {
   };
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+    if (!input.trim() || isLoading) return;
 
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: inputValue,
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue('');
+    const userMsg = { type: 'user', content: input };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
     setIsLoading(true);
 
     try {
-      // Create AI message placeholder
-      const aiMessageId = (Date.now() + 1).toString();
-      const aiMessage: Message = {
-        id: aiMessageId,
-        type: 'ai',
-        content: '',
-        toolCalls: [],
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-
-      // Send to backend
-      const response = await fetch(`${API_URL}/chat`, {
+      const response = await fetch('http://localhost:8080/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: inputValue }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: input }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
+      if (!response.ok) throw new Error('Failed to send message');
 
-      // Handle streaming response
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let aiContent = '';
-      let toolCalls: Message['toolCalls'] = [];
+
+      const aiMsg = { type: 'ai', content: '' };
+      setMessages(prev => [...prev, aiMsg]);
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const text = decoder.decode(value);
-          const lines = text.split('\n');
-
-          for (const line of lines) {
+          const chunk = decoder.decode(value);
+          for (const line of chunk.split('\n')) {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
-                
                 if (data.type === 'content' && data.content) {
                   aiContent += data.content;
-                } else if (data.type === 'tool_call') {
-                  if (!toolCalls) toolCalls = [];
-                  toolCalls.push({
-                    name: data.tool,
-                    status: data.status,
-                    source: data.source,
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = { type: 'ai', content: aiContent };
+                    return updated;
                   });
                 }
               } catch (e) {
@@ -156,36 +123,13 @@ export default function App() {
               }
             }
           }
-
-          // Update message in real-time
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === aiMessageId
-                ? { ...msg, content: aiContent, toolCalls }
-                : msg
-            )
-          );
         }
       }
     } catch (error) {
-      console.error('Error sending message:', error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          type: 'ai',
-          content: 'Sorry, there was an error processing your request. Make sure the backend API is running at http://localhost:8080',
-        },
-      ]);
+      console.error('Error:', error);
+      setMessages(prev => [...prev, { type: 'ai', content: 'Error connecting to backend. Make sure it\'s running on http://localhost:8080' }]);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
     }
   };
 
@@ -243,15 +187,12 @@ export default function App() {
           <div className="border-b border-gray-200 px-6 sm:px-8 pt-4 sm:pt-6 pb-3 sm:pb-4 flex-shrink-0">
             <h1 className="text-lg sm:text-xl text-[#662d3a] mb-3 sm:mb-4">Cancer Research Assistant</h1>
             <div className="flex gap-2 sm:gap-4 overflow-x-auto">
-              <button className="px-3 sm:px-4 py-1.5 text-xs sm:text-sm text-[#6b7280] hover:text-[#662d3a] transition-colors whitespace-nowrap">
-                MCP1
-              </button>
-              <button className="px-3 sm:px-4 py-1.5 text-xs sm:text-sm text-[#6b7280] hover:text-[#662d3a] transition-colors whitespace-nowrap">
-                MCP2
-              </button>
-              <button className="px-3 sm:px-4 py-1.5 text-xs sm:text-sm text-[#6b7280] hover:text-[#662d3a] transition-colors whitespace-nowrap">
-                MCP3
-              </button>
+              {mcpServers.map(name => (
+                <span key={name} className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm text-[#662d3a] font-medium">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                  {name}
+                </span>
+              ))}
             </div>
           </div>
 
@@ -264,7 +205,7 @@ export default function App() {
                 <span className="text-[#6b7280]">AI Agent</span>
               </div>
               <span className="text-[#6b7280] hidden sm:inline">•</span>
-              <span className="text-[#6b7280]">3 MCP sources active</span>
+              <span className="text-[#6b7280]">{mcpServers.length} MCP sources active</span>
               <button className="ml-0 sm:ml-auto px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors flex-shrink-0">
                 Export ↓
               </button>
@@ -274,24 +215,15 @@ export default function App() {
             <div className="flex-1 overflow-y-auto mb-6 min-h-0">
               {messages.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-center">
-                  <div className="text-gray-400 max-w-md">
+                  <div className="text-gray-400">
                     <p className="text-lg font-semibold mb-2">Welcome to OncoQuery</p>
                     <p className="text-sm">Ask me anything about cancer research, proteins, structures, and more.</p>
                   </div>
                 </div>
               ) : (
-                <>
-                  {messages.map((message) => (
-                    <ChatMessage
-                      key={message.id}
-                      type={message.type}
-                      content={message.content}
-                      toolCalls={message.toolCalls}
-                      isStreaming={isLoading && message.id === messages[messages.length - 1]?.id && message.type === 'ai'}
-                    />
-                  ))}
-                  <div ref={messagesEndRef} />
-                </>
+                messages.map((msg, i) => (
+                  <ChatMessage key={i} type={msg.type} content={msg.content} />
+                ))
               )}
             </div>
 
@@ -299,23 +231,26 @@ export default function App() {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 flex-shrink-0 w-full">
               <select className="px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded bg-white hover:bg-gray-50 transition-colors">
                 <option>ALL</option>
-                <option>UniProt</option>
-                <option>PDB</option>
-                <option>AlphaFold</option>
+                {mcpServers.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
               <input
                 type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
                 placeholder="Ask me anything about breast cancer proteins, variants, trials or recent literature..."
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
+                className="flex-1 px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#662d3a] focus:border-transparent disabled:opacity-50"
                 disabled={isLoading}
-                className="flex-1 px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#662d3a] focus:border-transparent disabled:bg-gray-100"
               />
-              <button
+              <button 
                 onClick={handleSendMessage}
-                disabled={isLoading || !inputValue.trim()}
-                className="p-2 bg-[#662d3a] text-white rounded hover:bg-[#7a3544] transition-colors flex-shrink-0 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                disabled={isLoading || !input.trim()}
+                className="p-2 bg-[#662d3a] text-white rounded hover:bg-[#7a3544] transition-colors flex-shrink-0 disabled:opacity-50"
               >
                 <Send className="w-4 sm:w-5 h-4 sm:h-5" />
               </button>
