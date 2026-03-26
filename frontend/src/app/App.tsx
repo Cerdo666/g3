@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ChatMessage from './components/ChatMessage';
@@ -9,6 +9,15 @@ import History from './components/History';
 import ForgotPassword from './components/ForgotPassword';
 import { Send } from 'lucide-react';
 
+interface Message {
+  id: string;
+  type: 'user' | 'ai';
+  content: string;
+  toolCalls?: { name: string; status: 'calling' | 'done' | 'error'; source: string }[];
+}
+
+const API_URL = 'http://localhost:8080';
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState('');
@@ -18,6 +27,18 @@ export default function App() {
   const [showProjects, setShowProjects] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSignIn = (email: string) => {
     setUserEmail(email);
@@ -62,6 +83,110 @@ export default function App() {
 
   const handleCloseRegister = () => {
     setShowRegister(false);
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputValue.trim()) return;
+
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: inputValue,
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setInputValue('');
+    setIsLoading(true);
+
+    try {
+      // Create AI message placeholder
+      const aiMessageId = (Date.now() + 1).toString();
+      const aiMessage: Message = {
+        id: aiMessageId,
+        type: 'ai',
+        content: '',
+        toolCalls: [],
+      };
+      setMessages((prev) => [...prev, aiMessage]);
+
+      // Send to backend
+      const response = await fetch(`${API_URL}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: inputValue }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let aiContent = '';
+      let toolCalls: Message['toolCalls'] = [];
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const text = decoder.decode(value);
+          const lines = text.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                
+                if (data.type === 'content' && data.content) {
+                  aiContent += data.content;
+                } else if (data.type === 'tool_call') {
+                  if (!toolCalls) toolCalls = [];
+                  toolCalls.push({
+                    name: data.tool,
+                    status: data.status,
+                    source: data.source,
+                  });
+                }
+              } catch (e) {
+                // Ignore parse errors
+              }
+            }
+          }
+
+          // Update message in real-time
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === aiMessageId
+                ? { ...msg, content: aiContent, toolCalls }
+                : msg
+            )
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          type: 'ai',
+          content: 'Sorry, there was an error processing your request. Make sure the backend API is running at http://localhost:8080',
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
 
   if (showSignIn) {
@@ -147,31 +272,51 @@ export default function App() {
 
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto mb-6 min-h-0">
-              <ChatMessage type="ai" />
-              <ChatMessage type="user" />
-              <ChatMessage type="ai" />
-              <ChatMessage type="user" />
-              <ChatMessage type="ai" />
-              <ChatMessage type="user" />
-              <ChatMessage type="ai" />
-              <ChatMessage type="user" />
-              <ChatMessage type="ai" />
+              {messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-center">
+                  <div className="text-gray-400 max-w-md">
+                    <p className="text-lg font-semibold mb-2">Welcome to OncoQuery</p>
+                    <p className="text-sm">Ask me anything about cancer research, proteins, structures, and more.</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {messages.map((message) => (
+                    <ChatMessage
+                      key={message.id}
+                      type={message.type}
+                      content={message.content}
+                      toolCalls={message.toolCalls}
+                      isStreaming={isLoading && message.id === messages[messages.length - 1]?.id && message.type === 'ai'}
+                    />
+                  ))}
+                  <div ref={messagesEndRef} />
+                </>
+              )}
             </div>
 
             {/* Search Bar */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 flex-shrink-0 w-full">
               <select className="px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded bg-white hover:bg-gray-50 transition-colors">
                 <option>ALL</option>
-                <option>MCP1</option>
-                <option>MCP2</option>
-                <option>MCP3</option>
+                <option>UniProt</option>
+                <option>PDB</option>
+                <option>AlphaFold</option>
               </select>
               <input
                 type="text"
                 placeholder="Ask me anything about breast cancer proteins, variants, trials or recent literature..."
-                className="flex-1 px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#662d3a] focus:border-transparent"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={isLoading}
+                className="flex-1 px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#662d3a] focus:border-transparent disabled:bg-gray-100"
               />
-              <button className="p-2 bg-[#662d3a] text-white rounded hover:bg-[#7a3544] transition-colors flex-shrink-0">
+              <button
+                onClick={handleSendMessage}
+                disabled={isLoading || !inputValue.trim()}
+                className="p-2 bg-[#662d3a] text-white rounded hover:bg-[#7a3544] transition-colors flex-shrink-0 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
                 <Send className="w-4 sm:w-5 h-4 sm:h-5" />
               </button>
             </div>
