@@ -15,6 +15,7 @@ Bio-research assistant connected to MCP servers for protein databases, structure
 ```bash
 cd ./g3/backend
 uv sync                             # Install Python deps (Copilot SDK, UniProt MCP)
+uv pip install github-copilot-sdk
 uv run python -m mcp.pdb_alpha_mcp  # Clone & build PDB + AlphaFold Node.js servers, if mcp-servers already exists -- skip this command
 ```
 
