@@ -1,6 +1,6 @@
-# Console Chat — Bio-Research Assistant
+# OncoQuery Backend — Bio-Research Assistant API
 
-Console chat prototype using the [GitHub Copilot SDK](https://github.com/github/copilot-sdk).
+FastAPI backend using the [GitHub Copilot SDK](https://github.com/github/copilot-sdk).
 Bio-research assistant connected to MCP servers for protein databases, structure prediction, and more.
 
 ## Prerequisites
@@ -8,24 +8,46 @@ Bio-research assistant connected to MCP servers for protein databases, structure
 - Python 3.11+
 - Node.js 18+ (for PDB and AlphaFold MCP servers)
 - [uv](https://docs.astral.sh/uv/) package manager
-- [GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli) installed and authenticated (`copilot` in PATH)
-- A GitHub Copilot subscription
+- A GitHub Copilot subscription with a fine-grained PAT (`github_pat_...`) having the **Copilot Requests** permission
 
 ## Setup
 
 ```bash
-cd console-chat
-uv sync                            # Python deps (Copilot SDK, UniProt MCP)
-uv run python setup_mcp_servers.py # Clone & build PDB + AlphaFold servers
+cd ./g3/backend
+uv sync                             # Install Python deps (Copilot SDK, UniProt MCP)
+uv run python -m mcp.pdb_alpha_mcp  # Clone & build PDB + AlphaFold Node.js servers, if mcp-servers already exists -- skip this command
+```
+
+## Authentication
+
+The backend requires a GitHub fine-grained Personal Access Token with the **Copilot Requests** permission.
+Generate one at: **github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens**
+
+> Generate a new token with the "Copilot Requests" permission (under "Other permissions")
+> ⚠️ Classic `ghp_` tokens are NOT supported.
+
+Set it as an environment variable before running:
+
+```powershell
+# PowerShell
+$env:COPILOT_GITHUB_TOKEN = "github_pat_..."
+uv run python api.py
+```
+
+```bash
+# bash / Linux / macOS
+COPILOT_GITHUB_TOKEN="github_pat_..." uv run python api.py
 ```
 
 ## Run
 
 ```bash
-uv run python main.py
+uv run python api.py
 ```
 
-Type messages and press Enter. Type `quit` or `exit` to stop.
+Server runs on http://127.0.0.1:8080
+
+Interactive API docs: http://127.0.0.1:8080/docs
 
 ## MCP Servers
 

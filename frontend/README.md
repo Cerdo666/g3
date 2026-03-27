@@ -12,7 +12,9 @@ React + Vite + Tailwind CSS + shadcn/ui component library for bio-research assis
 
 Install dependencies:
 ```bash
+cd ./g3/frontend
 npm install
+npm install react-markdown remark-gfm
 ```
 
 ## Development
@@ -57,6 +59,8 @@ frontend/
 - **Vite** - Build tool and dev server
 - **Tailwind CSS** - Utility-first CSS framework
 - **shadcn/ui** - Composable React components
+- **react-markdown** - Render Markdown in React
+- **remark-gfm** - GitHub Flavoured Markdown support
 - **TypeScript** - Type-safe JavaScript
 
 ## API Integration

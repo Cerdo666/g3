@@ -96,8 +96,9 @@ export default function App() {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let aiContent = '';
+      let aiToolCalls: any[] = [];
 
-      const aiMsg = { type: 'ai', content: '' };
+      const aiMsg = { type: 'ai', content: '', toolCalls: [] };
       setMessages(prev => [...prev, aiMsg]);
 
       if (reader) {
@@ -110,11 +111,26 @@ export default function App() {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
-                if (data.type === 'content' && data.content) {
-                  aiContent += data.content;
+                if (data.type === 'content' && data.data) {
+                  aiContent += data.data;
                   setMessages(prev => {
                     const updated = [...prev];
-                    updated[updated.length - 1] = { type: 'ai', content: aiContent };
+                    updated[updated.length - 1] = { type: 'ai', content: aiContent, toolCalls: aiToolCalls };
+                    return updated;
+                  });
+                } else if (data.type === 'tool_call' && data.data) {
+                  const tc = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+                  // Update existing entry if same tool, else append
+                  const idx = aiToolCalls.findIndex(t => t.name === tc.name && t.source === tc.source);
+                  if (idx >= 0) {
+                    aiToolCalls = [...aiToolCalls];
+                    aiToolCalls[idx] = tc;
+                  } else {
+                    aiToolCalls = [...aiToolCalls, tc];
+                  }
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = { type: 'ai', content: aiContent, toolCalls: aiToolCalls };
                     return updated;
                   });
                 }
@@ -222,7 +238,13 @@ export default function App() {
                 </div>
               ) : (
                 messages.map((msg, i) => (
-                  <ChatMessage key={i} type={msg.type} content={msg.content} />
+                  <ChatMessage
+                    key={i}
+                    type={msg.type}
+                    content={msg.content}
+                    toolCalls={msg.toolCalls}
+                    isStreaming={isLoading && i === messages.length - 1 && msg.type === 'ai'}
+                  />
                 ))
               )}
             </div>
