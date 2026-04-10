@@ -8,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from copilot import CopilotClient, PermissionHandler
+from copilot import CopilotClient
+from copilot.session import PermissionHandler
 from mcp import build_mcp_servers, on_pre_tool_use, on_post_tool_use, on_session_start, tool_events, set_mcp_server_names
 from streaming import SSEEvent
 
@@ -58,18 +59,18 @@ async def get_session():
         if mcp_servers:
             logger.info("MCP servers: %s", ", ".join(mcp_servers.keys()))
 
-        _session = await _client.create_session({
-            "model": "gpt-4o",
-            "streaming": True,
-            "system_message": {"content": SYSTEM_MESSAGE},
-            "on_permission_request": PermissionHandler.approve_all,
-            "mcp_servers": mcp_servers,
-            "hooks": {
+        _session = await _client.create_session(
+            model="claude-haiku-4.5",
+            streaming=True,
+            system_message={"content": SYSTEM_MESSAGE},
+            on_permission_request=PermissionHandler.approve_all,
+            mcp_servers=mcp_servers,
+            hooks={
                 "on_pre_tool_use": on_pre_tool_use,
                 "on_post_tool_use": on_post_tool_use,
                 "on_session_start": on_session_start,
             },
-        })
+        )
 
         logger.info("Session ready ✓")
         return _session
@@ -95,6 +96,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+async def health():
+    return {"status": "ok"}
 
 
 # ── Modelos ───────────────────────────────────────────────────────────
@@ -138,7 +144,7 @@ async def chat(req: ChatRequest):
                 done.set()
 
         unsubscribe = session.on(on_event)
-        await session.send({"prompt": req.message})
+        await session.send(req.message)
 
         while not done.is_set():
             await asyncio.sleep(0.05)
@@ -180,4 +186,4 @@ if __name__ == "__main__":
         datefmt="%H:%M:%S",
     )
 
-    uvicorn.run("api:app", host="127.0.0.1", port=8080, reload=False, log_level=log_level)
+    uvicorn.run("api:app", host="0.0.0.0", port=8080, reload=False, log_level=log_level)
