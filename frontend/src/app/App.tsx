@@ -9,6 +9,9 @@ import History from './components/History';
 import ForgotPassword from './components/ForgotPassword';
 import { Send } from 'lucide-react';
 
+
+const API_URL = 'https://app-123.jollysky-7e15a62c.spaincentral.azurecontainerapps.io';
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState('');
@@ -25,7 +28,7 @@ export default function App() {
 
   // Load MCP servers from backend
   useEffect(() => {
-    fetch('http://localhost:8080/status')
+  fetch(`${API_URL}/status`)
       .then(r => r.json())
       .then(data => setMcpServers(data.mcp_servers ?? []))
       .catch(() => setMcpServers([]));
@@ -143,7 +146,7 @@ export default function App() {
       }
     } catch (error) {
       console.error('Error:', error);
-      setMessages(prev => [...prev, { type: 'ai', content: 'Error connecting to backend. Make sure it\'s running on http://localhost:8080' }]);
+       setMessages(prev => [...prev, { type: 'ai', content: 'Error connecting to backend.' }]);
     } finally {
       setIsLoading(false);
     }
