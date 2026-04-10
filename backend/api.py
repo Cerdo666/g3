@@ -1,4 +1,5 @@
 # backend/api.py
+import os
 import asyncio
 import logging
 from contextlib import asynccontextmanager
@@ -90,13 +91,14 @@ async def lifespan(app: FastAPI):
 # ── App FastAPI ───────────────────────────────────────────────────────
 app = FastAPI(title="OncoQuery API", lifespan=lifespan)
 
+origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
+    allow_origins=origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 @app.get("/")
 async def health():
