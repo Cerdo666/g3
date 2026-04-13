@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "OncoQuery API — bio-research backend powered by GitHub Copilot SDK"
 requires-python = ">=3.11"
 dependencies = [
-    "github-copilot-sdk>=0.1.32",
+    "github-copilot-sdk==0.1.32",
     "uniprot-mcp>=0.1.0",
     "fastapi>=0.115.0",      
     "uvicorn>=0.30.0",       
