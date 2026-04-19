@@ -6,3 +6,7 @@ __pycache__/
 node_modules/
 .env
 *.log
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
