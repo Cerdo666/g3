@@ -26,6 +26,25 @@ npm run dev
 
 The frontend will be available at `http://localhost:5173` and will automatically reload when you make changes.
 
+## Testing
+
+Run unit tests:
+```bash
+npm run test
+```
+
+Run tests with UI dashboard:
+```bash
+npm run test:ui
+```
+
+Run tests with coverage report:
+```bash
+npm run test:coverage
+```
+
+Tests are automatically run on every push/pull request via GitLab CI (see `.gitlab-ci.yml`)
+
 ## Build
 
 Create an optimized production build:
