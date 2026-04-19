@@ -1,36 +1,46 @@
 import QueryCard from './QueryCard';
 import BubbleAnimation from './BubbleAnimation';
+import { X } from 'lucide-react';
 
-export default function Sidebar() {
+type SidebarProps = {
+  onQuerySelect: (query: string) => void;
+  onCollapse?: () => void;
+};
+
+export default function Sidebar({ onQuerySelect, onCollapse }: SidebarProps) {
   return (
-    <aside className="relative w-80 bg-white border-r border-gray-200 p-6 overflow-y-auto">
+    <aside className="relative w-80 h-full bg-white border-r border-gray-200 p-6 overflow-y-auto flex flex-col">
       <BubbleAnimation />
 
-      {/* Example Queries Section */}
-      <div className="relative mb-8 z-10">
+      {onCollapse && (
+        <button
+          className="relative z-10 self-end -mt-2 -mr-2 mb-2 p-1 text-[#662d3a] hover:bg-gray-100 rounded transition-colors"
+          onClick={onCollapse}
+          aria-label="Collapse sidebar"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
+
+      <div className="relative mb-8 z-10 flex-1">
         <h3 className="text-xs tracking-wide text-[#8b4f5a] mb-4">EXAMPLE QUERIES</h3>
         <div className="space-y-3">
-          <QueryCard description="Prompt 1" />
-          <QueryCard description="Prompt 2" />
-          <QueryCard description="Prompt 3" />
+          <QueryCard description="List the biological functions and pathways associated with BRCA1" onClick={onQuerySelect} />
+          <QueryCard description="Extracts altered pathways in luminal breast cancer A" onClick={onQuerySelect} />
+          <QueryCard description="Identifies binding pockets in HER2 structures and suggests possible (repositioned) compounds with potential affinity" onClick={onQuerySelect} />
         </div>
       </div>
 
-      {/* Example Prompt AND Result Section */}
-      <div className="relative mb-8 z-10">
-        <h3 className="text-xs tracking-wide text-[#8b4f5a] mb-4">EXAMPLE RESULT - BREAST CANCER</h3>
-        <div className="text-xs tracking-wide text-[#8b4f5a] mb-4">Prompt 1</div> 
-        <div className="border-l-4 border-[#8b4f5a] pl-4 py-2 bg-[#f9f3f4]">
-          <div className="text-[#662d3a] italic text-sm"> Here you can download articles from 2026</div>
-          <button>DOWNLOAD</button>
-           {/* Key Proteins Section */}
-          <div>
-            <h3 className="text-xs tracking-wide text-[#8b4f5a] mb-4">KEY PROTEINS</h3>
-            <button>DOWNLOAD FASTA</button>
+      <div className="relative z-10 border-t border-gray-200 pt-4 mt-auto">
+        <div className="flex flex-col items-center gap-1.5 text-xs text-[#6b7280]">
+          <span>© 2026 OncoQuery. All rights reserved.</span>
+          <div className="flex gap-2">
+            <button className="hover:text-[#662d3a] transition-colors">Privacy Policy</button>
+            <span>•</span>
+            <button className="hover:text-[#662d3a] transition-colors">Terms of Service</button>
           </div>
         </div>
       </div>
-     
     </aside>
   );
 }

@@ -90,15 +90,15 @@ export default function BubbleAnimation() {
             {bubbles.map((bubble) => (
               <motion.circle
                 key={bubble.id}
-                cx={`${bubble.x}%`}
-                cy={`${bubble.y}%`}
+                cx={bubble.x}
+                cy={bubble.y}
                 r={bubble.size}
                 fill={bubble.color}
                 initial={{ opacity: 0, r: 0 }}
                 animate={{
                   opacity: 1,
-                  cx: `${bubble.x}%`,
-                  cy: `${bubble.y}%`,
+                  cx: bubble.x,
+                  cy: bubble.y,
                   r: bubble.size,
                 }}
                 exit={{

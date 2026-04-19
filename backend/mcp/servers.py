@@ -11,13 +11,31 @@ logger = logging.getLogger("mcp.servers")
 _BACKEND_DIR = os.path.dirname(os.path.dirname(__file__))
 
 
+def _node_server(name: str, node_cmd: str) -> dict | None:
+    """Helper: devuelve config de un MCP server Node.js o None si no está buildeado."""
+    server_dir = os.path.join(_BACKEND_DIR, "mcp-servers", name)
+    index_js = os.path.join(server_dir, "build", "index.js")
+    if node_cmd and os.path.isfile(index_js):
+        return {
+            "type": "local",
+            "command": node_cmd,
+            "args": [index_js],
+            "tools": ["*"],
+        }
+    logger.warning("%s not found or Node.js not available — tools disabled", name)
+    return None
+
+
 def build_mcp_servers() -> dict:
-    """Build MCP server configs. Add new servers here as the project grows."""
+    """
+    Construye la configuración de todos los MCP servers activos.
+    Añade nuevos servers aquí a medida que el proyecto crece.
+    """
     servers: dict = {}
     node_cmd = shutil.which("node")
     python_cmd = shutil.which("python") or sys.executable
 
-    # ── UniProt MCP — protein database (pip: uniprot-mcp) ──
+    # ── UniProt — proteínas y secuencias (Python, pip: uniprot-mcp) ───
     wrapper = os.path.join(_BACKEND_DIR, "mcp", "uniprot_mcp_wrapper.py")
     if os.path.isfile(wrapper):
         servers["uniprot"] = {
@@ -29,31 +47,40 @@ def build_mcp_servers() -> dict:
     else:
         logger.warning("uniprot_mcp_wrapper.py not found — UniProt tools disabled")
 
-    # ── PDB MCP — RCSB Protein Data Bank (Node.js) ──
-    pdb_server_dir = os.path.join(_BACKEND_DIR, "mcp-servers", "pdb-server")
-    pdb_index_js = os.path.join(pdb_server_dir, "build", "index.js")
-    if node_cmd and os.path.isfile(pdb_index_js):
-        servers["pdb"] = {
-            "type": "local",
-            "command": node_cmd,
-            "args": [pdb_index_js],
-            "tools": ["*"],
-        }
-    else:
-        logger.warning("PDB MCP server not found or Node.js not available — PDB tools disabled")
+    # ── PDB — estructuras 3D de proteínas (RCSB) ──────────────────────
+    if cfg := _node_server("pdb-server", node_cmd):
+        servers["pdb"] = cfg
 
-    # ── AlphaFold MCP — structure prediction (Node.js) ──
-    alphafold_server_dir = os.path.join(_BACKEND_DIR, "mcp-servers", "alphafold-server")
-    alphafold_index_js = os.path.join(alphafold_server_dir, "build", "index.js")
-    if node_cmd and os.path.isfile(alphafold_index_js):
-        servers["alphafold"] = {
-            "type": "local",
-            "command": node_cmd,
-            "args": [alphafold_index_js],
-            "tools": ["*"],
-        }
-    else:
-        logger.warning("AlphaFold MCP server not found or Node.js not available — AlphaFold tools disabled")
+    # ── AlphaFold — predicción de estructuras ─────────────────────────
+    if cfg := _node_server("alphafold-server", node_cmd):
+        servers["alphafold"] = cfg
+
+    # ── PubMed — literatura biomédica (36M+ artículos, NCBI) ─────────
+    if cfg := _node_server("pubmed-server", node_cmd):
+        # Opcional: añade tu NCBI API key para 10 req/s en vez de 3
+        ncbi_key = os.environ.get("NCBI_API_KEY")
+        ncbi_email = os.environ.get("NCBI_EMAIL")
+        if ncbi_key and ncbi_email:
+            cfg["env"] = {
+                "NCBI_API_KEY": ncbi_key,
+                "NCBI_EMAIL": ncbi_email,
+            }
+            logger.info("PubMed: using NCBI API key (10 req/s)")
+        else:
+            logger.info("PubMed: no NCBI_API_KEY set, using anonymous rate limit (3 req/s)")
+        servers["pubmed"] = cfg
+
+    # ── ClinicalTrials.gov — ensayos clínicos ─────────────────────────
+    if cfg := _node_server("clinicaltrials-server", node_cmd):
+        servers["clinicaltrials"] = cfg
+
+    # ── ChEMBL — base de datos de fármacos y moléculas bioactivas ─────
+    if cfg := _node_server("chembl-server", node_cmd):
+        servers["chembl"] = cfg
 
     set_mcp_server_names(list(servers.keys()))
+
+    active = list(servers.keys())
+    logger.info("Active MCP servers (%d): %s", len(active), ", ".join(active))
+
     return servers

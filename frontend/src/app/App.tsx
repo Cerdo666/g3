@@ -1,23 +1,32 @@
 import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
+import BubbleAnimation from './components/BubbleAnimation';
 import ChatMessage from './components/ChatMessage';
 import SignIn from './components/SignIn';
 import Register from './components/Register';
+import AdminPanel from './components/AdminPanel';
 import Projects from './components/Projects';
 import History from './components/History';
 import ForgotPassword from './components/ForgotPassword';
-import { Send } from 'lucide-react';
+import { Send, Menu } from 'lucide-react';
+
+
+const API_URL = 'https://app-123.jollysky-7e15a62c.spaincentral.azurecontainerapps.io';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [userName, setUserName] = useState('');
+  const [userId, setUserId] = useState('');
+  const [userRole, setUserRole] = useState('');
   const [showSignIn, setShowSignIn] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mcpServers, setMcpServers] = useState<string[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
@@ -25,21 +34,26 @@ export default function App() {
 
   // Load MCP servers from backend
   useEffect(() => {
-    fetch('http://localhost:8080/status')
+  fetch(`${API_URL}/status`)
       .then(r => r.json())
       .then(data => setMcpServers(data.mcp_servers ?? []))
       .catch(() => setMcpServers([]));
   }, []);
 
-  const handleSignIn = (email: string) => {
+  const handleSignIn = (email: string, name: string, role?: string, id?: string) => {
     setUserEmail(email);
+    setUserName(name);
+    setUserRole(role || 'user');
+    setUserId(id || '');
     setIsAuthenticated(true);
     setShowSignIn(false);
   };
 
-  const handleRegister = (email: string, name: string) => {
+  const handleRegister = (email: string, name: string, role?: string, id?: string) => {
     setUserEmail(email);
     setUserName(name);
+    setUserRole(role || 'user');
+    setUserId(id || '');
     setIsAuthenticated(true);
     setShowRegister(false);
   };
@@ -48,6 +62,8 @@ export default function App() {
     setIsAuthenticated(false);
     setUserEmail('');
     setUserName('');
+    setUserId('');
+    setUserRole('');
   };
 
   const handleOpenSignIn = () => {
@@ -76,6 +92,10 @@ export default function App() {
     setShowRegister(false);
   };
 
+  const handleQuerySelect = (query: string) => {
+    setInput(query);
+  };
+
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -85,7 +105,7 @@ export default function App() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8080/chat', {
+      const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: input }),
@@ -143,7 +163,7 @@ export default function App() {
       }
     } catch (error) {
       console.error('Error:', error);
-      setMessages(prev => [...prev, { type: 'ai', content: 'Error connecting to backend. Make sure it\'s running on http://localhost:8080' }]);
+       setMessages(prev => [...prev, { type: 'ai', content: 'Error connecting to backend.' }]);
     } finally {
       setIsLoading(false);
     }
@@ -174,6 +194,10 @@ export default function App() {
     );
   }
 
+  if (showAdmin && userRole === 'admin') {
+    return <AdminPanel userId={userId} onClose={() => setShowAdmin(false)} />;
+  }
+
   if (showProjects) {
     return <Projects onClose={() => setShowProjects(false)} />;
   }
@@ -188,24 +212,41 @@ export default function App() {
         onSignOut={handleSignOut} 
         userEmail={userEmail}
         userName={userName}
+        userRole={userRole}
         isAuthenticated={isAuthenticated}
         onOpenSignIn={handleOpenSignIn}
         onOpenRegister={handleOpenRegister}
         onOpenProjects={handleOpenProjects}
         onOpenHistory={handleOpenHistory}
+        onOpenAdmin={() => setShowAdmin(true)}
       />
 
       <div className="flex-1 flex overflow-hidden min-h-0">
-        <Sidebar />
+        {sidebarOpen ? (
+          <div className="w-80 flex-shrink-0 transition-[width] duration-200 ease-in-out">
+            <Sidebar onQuerySelect={handleQuerySelect} onCollapse={() => setSidebarOpen(false)} />
+          </div>
+        ) : (
+          <div className="w-12 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col items-center relative overflow-hidden">
+            <BubbleAnimation />
+            <button
+              className="relative z-10 mt-3 p-1.5 text-[#662d3a] hover:bg-white/60 rounded transition-colors"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
+        )}
 
         <main className="flex-1 flex flex-col min-h-0 min-w-0">
           {/* Title and Tabs */}
-          <div className="border-b border-gray-200 px-6 sm:px-8 pt-4 sm:pt-6 pb-3 sm:pb-4 flex-shrink-0">
-            <h1 className="text-lg sm:text-xl text-[#662d3a] mb-3 sm:mb-4">Cancer Research Assistant</h1>
-            <div className="flex gap-2 sm:gap-4 overflow-x-auto">
+          <div className="border-b border-gray-200 px-4 sm:px-8 pt-2 sm:pt-3 pb-2 sm:pb-2.5 flex-shrink-0">
+            <h1 className="text-sm sm:text-base text-[#662d3a] mb-1.5 sm:mb-2">Cancer Research Assistant</h1>
+            <div className="flex gap-2 sm:gap-3 overflow-x-auto">
               {mcpServers.map(name => (
-                <span key={name} className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm text-[#662d3a] font-medium">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                <span key={name} className="flex items-center gap-1 px-2 py-0.5 text-[0.7rem] sm:text-xs text-[#662d3a] font-medium">
+                  <span className="w-1 h-1 bg-green-500 rounded-full" />
                   {name}
                 </span>
               ))}
@@ -250,11 +291,7 @@ export default function App() {
             </div>
 
             {/* Search Bar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 flex-shrink-0 w-full">
-              <select className="px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded bg-white hover:bg-gray-50 transition-colors">
-                <option>ALL</option>
-                {mcpServers.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+            <div className="flex items-center gap-3 flex-shrink-0 w-full bg-white border border-gray-300 rounded-full px-4 py-1 shadow-sm focus-within:ring-2 focus-within:ring-[#662d3a] focus-within:border-transparent transition-shadow">
               <input
                 type="text"
                 value={input}
@@ -266,29 +303,20 @@ export default function App() {
                   }
                 }}
                 placeholder="Ask me anything about breast cancer proteins, variants, trials or recent literature..."
-                className="flex-1 px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#662d3a] focus:border-transparent disabled:opacity-50"
+                className="flex-1 py-2 text-sm bg-transparent outline-none placeholder:text-gray-400 disabled:opacity-50"
                 disabled={isLoading}
               />
               <button 
                 onClick={handleSendMessage}
                 disabled={isLoading || !input.trim()}
-                className="p-2 bg-[#662d3a] text-white rounded hover:bg-[#7a3544] transition-colors flex-shrink-0 disabled:opacity-50"
+                className="p-2.5 bg-[#662d3a] text-white rounded-full hover:bg-[#7a3544] transition-colors flex-shrink-0 disabled:opacity-50"
               >
-                <Send className="w-4 sm:w-5 h-4 sm:h-5" />
+                <Send className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="border-t border-gray-200 px-6 sm:px-8 py-3 sm:py-4 flex-shrink-0">
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm text-[#6b7280]">
-              <span>© 2026 OncoQuery. All rights reserved.</span>
-              <span className="hidden sm:inline">•</span>
-              <button className="hover:text-[#662d3a] transition-colors">Privacy Policy</button>
-              <span className="hidden sm:inline">•</span>
-              <button className="hover:text-[#662d3a] transition-colors">Terms of Service</button>
-            </div>
-          </div>
+
         </main>
       </div>
     </div>
