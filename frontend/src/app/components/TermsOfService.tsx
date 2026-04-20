@@ -16,60 +16,58 @@ export default function TermsOfService({ onClose }: TermsOfServiceProps) {
         <button
           onClick={onClose}
           className="p-2 hover:bg-white/10 rounded transition-colors"
-          aria-label="Cerrar"
+          aria-label="Close"
         >
           <X className="w-6 h-6" />
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 sm:p-10 max-w-3xl mx-auto">
-        <h1 className="text-3xl font-semibold text-[#662d3a] mb-2">Términos de Uso</h1>
-        <p className="text-sm text-gray-500 mb-10">Última actualización: Abril 2026</p>
+        <h1 className="text-3xl font-semibold text-[#662d3a] mb-2">Terms of Service</h1>
+        <p className="text-sm text-gray-500 mb-10">Last updated: April 2026</p>
 
         <div className="prose prose-gray max-w-none text-[15px] leading-relaxed">
-          <h2 className="text-2xl font-medium text-[#662d3a] mb-6">Acuerdo con los Términos</h2>
+          <h2 className="text-2xl font-medium text-[#662d3a] mb-6">Agreement to Terms</h2>
           <p>
-            Estos Términos de Uso constituyen un acuerdo legalmente vinculante entre tú (ya sea como persona física o en representación de una entidad) 
-            y el desarrollador de <strong>OncoQuery</strong> respecto al acceso y uso de esta plataforma.
+            These Terms of Service constitute a legally binding agreement between you (whether as an individual or on behalf of an entity) 
+            and the developer of <strong>OncoQuery</strong> regarding your access to and use of this platform.
           </p>
           <p className="mt-4">
-            Al acceder o utilizar OncoQuery, reconoces haber leído, comprendido y aceptado estos Términos. 
-            <strong>Si no estás de acuerdo, debes dejar de usar el servicio inmediatamente.</strong>
+            By accessing or using OncoQuery, you acknowledge that you have read, understood, and agreed to these Terms. 
+            <strong>If you do not agree, you must immediately cease using the service.</strong>
           </p>
 
-          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-6">Descripción del Servicio</h2>
+          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-6">Description of the Service</h2>
           <p>
-            OncoQuery es un agente conversacional basado en inteligencia artificial desarrollado como Trabajo de Fin de Carrera. 
-            Su objetivo es asistir en tareas de investigación biomédica, con especial enfoque en oncología (cáncer de mama como referencia principal en Catalunya), 
-            aunque está abierto a otros tipos de cáncer, enfermedades y niveles desde básico hasta experto en el ámbito BIO.
+            OncoQuery is a conversational artificial intelligence agent developed to assist our main stakeholders in biomedical and oncological research tasks. 
+            Its purpose is to assist with biomedical research tasks, with a special focus on oncology due to the project context and relevance, 
+            although it is not limited to this area. It is open to other types of cancer, diseases, and content ranging from basic to expert level in the BIO field.
           </p>
           <p className="mt-4 font-medium">
-            <strong>Importante:</strong> OncoQuery es una herramienta experimental de apoyo a la investigación. 
-            No sustituye el juicio clínico, diagnóstico médico ni consejo profesional. Las respuestas generadas por IA pueden contener inexactitudes.
+            <strong>Important:</strong> OncoQuery is an experimental research support tool. 
+            It does not replace clinical judgment, medical diagnosis, or professional advice. 
+            AI-generated responses may contain inaccuracies or hallucinations.
           </p>
 
-          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-6">Uso Permitido y Restricciones</h2>
+          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-6">Permitted Use and Restrictions</h2>
           <ul className="list-disc pl-6 space-y-3">
-            <li>Está permitido usar OncoQuery con fines educativos, de investigación o profesionales legítimos.</li>
-            <li><strong>Prohibido</strong> utilizarlo para diagnóstico o tratamiento directo de pacientes sin supervisión de un profesional cualificado.</li>
-            <li>Prohibido subir datos personales sensibles de pacientes que violen el RGPD.</li>
-            <li>Queda prohibida cualquier extracción o uso comercial del sistema sin autorización expresa.</li>
+            <li>It is permitted to use OncoQuery for educational, research, or legitimate professional purposes.</li>
+            <li><strong>Prohibited:</strong> Using it for direct diagnosis or treatment of patients without the supervision of a qualified professional.</li>
+            <li>Prohibited to upload sensitive patient personal data that would violate GDPR.</li>
+            <li>Any extraction or commercial use of the system without express authorization is strictly prohibited.</li>
           </ul>
 
-          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-6">Limitación de Responsabilidad</h2>
+          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-6">Limitation of Liability</h2>
           <p>
-            El servicio se proporciona “tal cual”. El desarrollador no ofrece ninguna garantía sobre la exactitud, completitud o fiabilidad de las respuestas. 
-            En ningún caso será responsable de daños derivados del uso de la plataforma.
+            The service is provided “as is”. The developer makes no warranties regarding the accuracy, completeness, or reliability of the responses. 
+            In no event shall the developer be liable for any damages arising from the use of the platform.
           </p>
 
-          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-6">Propiedad Intelectual</h2>
+          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-6">Intellectual Property</h2>
           <p>
-            Todo el contenido y código de OncoQuery pertenece al autor del TFC, salvo las licencias de terceros (Ollama, iconos, etc.).
+            All content and code of OncoQuery belong to the author, except for third-party licenses.
           </p>
 
-          <p className="mt-12 text-sm text-gray-500">
-            Estos Términos se rigen por la legislación española. Cualquier duda puedes contactar al autor del proyecto.
-          </p>
         </div>
       </div>
     </div>
