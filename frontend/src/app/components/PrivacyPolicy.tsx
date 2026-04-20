@@ -16,55 +16,43 @@ export default function PrivacyPolicy({ onClose }: PrivacyPolicyProps) {
         <button
           onClick={onClose}
           className="p-2 hover:bg-white/10 rounded transition-colors"
-          aria-label="Cerrar"
+          aria-label="Close"
         >
           <X className="w-6 h-6" />
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 sm:p-10 max-w-3xl mx-auto">
-        <h1 className="text-3xl font-semibold text-[#662d3a] mb-2">Política de Privacidad</h1>
-        <p className="text-sm text-gray-500 mb-10">Última actualización: Abril 2026</p>
+        <h1 className="text-3xl font-semibold text-[#662d3a] mb-2">Privacy Policy</h1>
+        <p className="text-sm text-gray-500 mb-10">Last updated: April 2026</p>
 
         <div className="prose prose-gray max-w-none text-[15px] leading-relaxed">
           <p>
-            OncoQuery es un proyecto de Trabajo de Fin de Carrera desarrollado en Hospitalet de Llobregat (Catalunya). 
-            Se trata de un agente conversacional de IA enfocado en investigación biomédica y oncología.
+            OncoQuery complies with European Union data protection regulations. 
+            It is a conversational AI agent focused on oncological and biomedical research.
           </p>
 
-          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-4">1. Información que recopilamos</h2>
+          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-4">1. Information We Collect</h2>
           <p>
-            OncoQuery está diseñado con un fuerte enfoque en la privacidad. 
-            <strong>No recopilamos datos personales identificables</strong> de forma predeterminada.
+            OncoQuery is designed with a strong focus on privacy. 
+            <strong>We do not collect personally identifiable data</strong> by default.
           </p>
           <ul className="list-disc pl-6 space-y-2 mt-4">
-            <li>Las consultas que introduces se procesan de forma temporal para generar respuestas.</li>
-            <li>Si utilizas Ollama de forma local, tus consultas nunca abandonan tu entorno.</li>
-            <li>No usamos cookies de seguimiento ni herramientas de analytics que identifiquen usuarios.</li>
-            <li>No almacenamos historial de conversaciones de forma persistente (salvo que guardes sesiones manualmente).</li>
+            <li>The queries you enter are processed temporarily to generate responses.</li>
           </ul>
 
-          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-4">2. Uso de la información</h2>
+          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-4">2. Use of Information</h2>
           <p>
-            Tus consultas se utilizan exclusivamente para generar respuestas relevantes en el contexto de investigación biomédica, 
-            oncología y áreas BIO relacionadas.
+            Your queries are used exclusively to generate relevant responses in the context of biomedical research, 
+            oncology, and related BIO fields.
           </p>
 
-          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-4">3. Compartición de datos</h2>
+          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-4">3. Data Sharing</h2>
           <p>
-            No vendemos ni compartimos tus consultas con terceros. 
-            Cuando se consultan fuentes externas (PubMed, PDB, ClinicalTrials, etc.), solo se envían los términos de búsqueda necesarios.
+            We do not sell or share your queries with third parties. 
+            When consulting external sources (PubMed, PDB, ClinicalTrials, etc.), only the necessary search terms are sent.
           </p>
 
-          <h2 className="text-2xl font-medium text-[#662d3a] mt-12 mb-4">4. Seguridad y RGPD</h2>
-          <p>
-            Cumplimos con el Reglamento General de Protección de Datos (RGPD). 
-            Las consultas se procesan de forma segura y, en modo local con Ollama, los datos no salen de tu máquina.
-          </p>
-
-          <p className="mt-10 text-sm text-gray-500">
-            Si tienes cualquier duda sobre esta política, contacta con el autor del TFC.
-          </p>
         </div>
       </div>
     </div>
