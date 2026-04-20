@@ -9,8 +9,9 @@ import AdminPanel from './components/AdminPanel';
 import Projects from './components/Projects';
 import History from './components/History';
 import ForgotPassword from './components/ForgotPassword';
+import PrivacyPolicy from './components/PrivacyPolicy';     // ← Nuevo
+import TermsOfService from './components/TermsOfService'; // ← Nuevo
 import { Send, Menu } from 'lucide-react';
-
 
 const API_URL = 'https://app-123.jollysky-7e15a62c.spaincentral.azurecontainerapps.io';
 
@@ -26,6 +27,8 @@ export default function App() {
   const [showProjects, setShowProjects] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);     // ← Nuevo
+  const [showTerms, setShowTerms] = useState(false);         // ← Nuevo
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mcpServers, setMcpServers] = useState<string[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
@@ -34,7 +37,7 @@ export default function App() {
 
   // Load MCP servers from backend
   useEffect(() => {
-  fetch(`${API_URL}/status`)
+    fetch(`${API_URL}/status`)
       .then(r => r.json())
       .then(data => setMcpServers(data.mcp_servers ?? []))
       .catch(() => setMcpServers([]));
@@ -76,21 +79,13 @@ export default function App() {
     setShowSignIn(false);
   };
 
-  const handleOpenProjects = () => {
-    setShowProjects(true);
-  };
+  const handleOpenProjects = () => setShowProjects(true);
+  const handleOpenHistory = () => setShowHistory(true);
+  const handleOpenAdmin = () => setShowAdmin(true);
 
-  const handleOpenHistory = () => {
-    setShowHistory(true);
-  };
-
-  const handleCloseSignIn = () => {
-    setShowSignIn(false);
-  };
-
-  const handleCloseRegister = () => {
-    setShowRegister(false);
-  };
+  // Nuevas funciones para legal
+  const handleOpenPrivacy = () => setShowPrivacy(true);
+  const handleOpenTerms = () => setShowTerms(true);
 
   const handleQuerySelect = (query: string) => {
     setInput(query);
@@ -140,7 +135,6 @@ export default function App() {
                   });
                 } else if (data.type === 'tool_call' && data.data) {
                   const tc = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
-                  // Update existing entry if same tool, else append
                   const idx = aiToolCalls.findIndex(t => t.name === tc.name && t.source === tc.source);
                   if (idx >= 0) {
                     aiToolCalls = [...aiToolCalls];
@@ -163,17 +157,18 @@ export default function App() {
       }
     } catch (error) {
       console.error('Error:', error);
-       setMessages(prev => [...prev, { type: 'ai', content: 'Error connecting to backend.' }]);
+      setMessages(prev => [...prev, { type: 'ai', content: 'Error connecting to backend.' }]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ==================== RENDER MODALES ====================
   if (showSignIn) {
     return (
       <SignIn 
         onSignIn={handleSignIn} 
-        onCancel={handleCloseSignIn}
+        onCancel={() => setShowSignIn(false)}
         onSwitchToRegister={handleOpenRegister}
         onForgotPassword={() => { setShowSignIn(false); setShowForgotPassword(true); }}
       />
@@ -188,7 +183,7 @@ export default function App() {
     return (
       <Register 
         onRegister={handleRegister} 
-        onCancel={handleCloseRegister}
+        onCancel={() => setShowRegister(false)}
         onSwitchToSignIn={handleOpenSignIn}
       />
     );
@@ -206,6 +201,16 @@ export default function App() {
     return <History onClose={() => setShowHistory(false)} />;
   }
 
+  // ←←← NUEVOS MODALES LEGALES ←←←
+  if (showPrivacy) {
+    return <PrivacyPolicy onClose={() => setShowPrivacy(false)} />;
+  }
+
+  if (showTerms) {
+    return <TermsOfService onClose={() => setShowTerms(false)} />;
+  }
+
+  // ==================== RENDER PRINCIPAL ====================
   return (
     <div className="h-screen w-screen flex flex-col bg-white overflow-hidden">
       <Header 
@@ -218,13 +223,18 @@ export default function App() {
         onOpenRegister={handleOpenRegister}
         onOpenProjects={handleOpenProjects}
         onOpenHistory={handleOpenHistory}
-        onOpenAdmin={() => setShowAdmin(true)}
+        onOpenAdmin={handleOpenAdmin}
       />
 
       <div className="flex-1 flex overflow-hidden min-h-0">
         {sidebarOpen ? (
           <div className="w-80 flex-shrink-0 transition-[width] duration-200 ease-in-out">
-            <Sidebar onQuerySelect={handleQuerySelect} onCollapse={() => setSidebarOpen(false)} />
+            <Sidebar 
+              onQuerySelect={handleQuerySelect} 
+              onCollapse={() => setSidebarOpen(false)}
+              onOpenPrivacy={handleOpenPrivacy}     // ← Nuevo
+              onOpenTerms={handleOpenTerms}         // ← Nuevo
+            />
           </div>
         ) : (
           <div className="w-12 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col items-center relative overflow-hidden">
@@ -290,7 +300,7 @@ export default function App() {
               )}
             </div>
 
-            {/* Search Bar */}
+            {/* Input Bar */}
             <div className="flex items-center gap-3 flex-shrink-0 w-full bg-white border border-gray-300 rounded-full px-4 py-1 shadow-sm focus-within:ring-2 focus-within:ring-[#662d3a] focus-within:border-transparent transition-shadow">
               <input
                 type="text"
@@ -315,10 +325,8 @@ export default function App() {
               </button>
             </div>
           </div>
-
-
         </main>
       </div>
     </div>
   );
-}
+} 
