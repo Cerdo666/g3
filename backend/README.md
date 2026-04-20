@@ -62,10 +62,12 @@ Run unit tests:
 pytest tests/ -v
 ```
 
-Run tests with coverage report:
+Run tests with coverage report (HTML output):
 ```bash
-pytest tests/ -v --cov=. --cov-report=html --cov-report=term
+pytest tests/ -v --cov=. --cov-report=html:coverage_report --cov-report=term
 ```
+
+View the HTML coverage report in `backend/coverage_report/index.html`
 
 Tests are automatically run on every push/pull request via GitLab CI (see `.gitlab-ci.yml`).
 

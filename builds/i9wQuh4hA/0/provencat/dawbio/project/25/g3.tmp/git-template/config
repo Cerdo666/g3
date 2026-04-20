@@ -1,0 +1,10 @@
+[init]
+	defaultBranch = none
+[fetch]
+	recurseSubmodules = false
+[credential]
+	interactive = never
+[gc]
+	autoDetach = false
+[include]
+	path = C:\\code\\g3\\builds\\i9wQuh4hA\\0\\provencat\\dawbio\\project\\25\\g3.tmp\\.gitlab-runner.ext.conf

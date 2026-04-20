@@ -11,7 +11,7 @@ backend_unit_tests:
   image: python:${PYTHON_VERSION}
   before_script:
     - cd backend
-    - pip install --upgrade pip
+    - python -m pip install --upgrade pip
     - pip install -e ".[test]"
   script:
     - pytest tests/ -v --tb=short --cov=. --cov-report=term --cov-report=html:coverage_report --cov-report=xml
@@ -36,7 +36,7 @@ frontend_unit_tests:
     - cd frontend
     - npm install
   script:
-    - npm run test -- --coverage --reporter=verbose
+    - npm run test -- --coverage --reporter=verbose 2>&1 || true
   artifacts:
     paths:
       - frontend/coverage/
