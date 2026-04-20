@@ -3,12 +3,13 @@ import { Mail, Lock, Eye, EyeOff, X, User } from 'lucide-react';
 import logoImage from '../../assets/LogoOncoQuery.png';
 
 interface RegisterProps {
+  apiUrl: string;
   onRegister: (email: string, name: string, role?: string, id?: string) => void;
   onCancel?: () => void;
   onSwitchToSignIn?: () => void;
 }
 
-export default function Register({ onRegister, onCancel, onSwitchToSignIn }: RegisterProps) {
+export default function Register({ apiUrl, onRegister, onCancel, onSwitchToSignIn }: RegisterProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -57,7 +58,7 @@ export default function Register({ onRegister, onCancel, onSwitchToSignIn }: Reg
     // Call backend to register
     setIsLoading(true);
     try {
-      const res = await fetch('http://localhost:8080/register', {
+      const res = await fetch(`${apiUrl}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, name, password }),

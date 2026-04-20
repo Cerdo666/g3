@@ -172,6 +172,7 @@ export default function App() {
   if (showSignIn) {
     return (
       <SignIn 
+        apiUrl={API_URL}
         onSignIn={handleSignIn} 
         onCancel={handleCloseSignIn}
         onSwitchToRegister={handleOpenRegister}
@@ -187,6 +188,7 @@ export default function App() {
   if (showRegister) {
     return (
       <Register 
+        apiUrl={API_URL}
         onRegister={handleRegister} 
         onCancel={handleCloseRegister}
         onSwitchToSignIn={handleOpenSignIn}
