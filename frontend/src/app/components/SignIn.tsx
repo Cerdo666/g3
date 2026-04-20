@@ -3,13 +3,14 @@ import { Mail, Lock, Eye, EyeOff, X } from 'lucide-react';
 import logoImage from '../../assets/LogoOncoQuery.png';
 
 interface SignInProps {
+  apiUrl: string;
   onSignIn: (email: string, name: string, role?: string, id?: string) => void;
   onCancel?: () => void;
   onSwitchToRegister?: () => void;
   onForgotPassword?: () => void;
 }
 
-export default function SignIn({ onSignIn, onCancel, onSwitchToRegister, onForgotPassword }: SignInProps) {
+export default function SignIn({ apiUrl, onSignIn, onCancel, onSwitchToRegister, onForgotPassword }: SignInProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -34,7 +35,7 @@ export default function SignIn({ onSignIn, onCancel, onSwitchToRegister, onForgo
     // Call backend to login
     setIsLoading(true);
     try {
-      const res = await fetch('http://localhost:8080/login', {
+      const res = await fetch(`${apiUrl}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
