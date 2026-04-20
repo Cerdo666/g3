@@ -192,7 +192,7 @@ export default function App() {
   }
 
   if (showAdmin && userRole === 'admin') {
-    return <AdminPanel userId={userId} onClose={() => setShowAdmin(false)} />;
+    return <AdminPanel userId={userId} onClose={() => setShowAdmin(false)} apiUrl={API_URL} />;
   }
 
   if (showProjects) {

@@ -15,6 +15,9 @@ uv.lock
 # Environment
 .env
 .env.local
+config.toml
+**/config.toml
+*.local.toml
 
 # IDE
 .vscode/

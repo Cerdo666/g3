@@ -4,6 +4,7 @@ import { ArrowLeft, Trash2, ShieldCheck, ShieldOff, Users, MessageSquare, FileDo
 interface AdminPanelProps {
   userId: string;
   onClose: () => void;
+  apiUrl: string;
 }
 
 interface UserDoc {
@@ -20,7 +21,7 @@ interface Stats {
   total_exports: number;
 }
 
-export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
+export default function AdminPanel({ userId, onClose, apiUrl }: AdminPanelProps) {
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,8 +34,8 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
     setError('');
     try {
       const [usersRes, statsRes] = await Promise.all([
-        fetch('http://localhost:8080/admin/users', { headers }),
-        fetch('http://localhost:8080/admin/stats', { headers }),
+        fetch(`${apiUrl}/admin/users`, { headers }),
+        fetch(`${apiUrl}/admin/stats`, { headers }),
       ]);
       if (!usersRes.ok || !statsRes.ok) {
         setError('Failed to load admin data');
@@ -57,7 +58,7 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
   const handleDelete = async (targetId: string, email: string) => {
     if (!confirm(`Delete user ${email}? This cannot be undone.`)) return;
     try {
-      const res = await fetch(`http://localhost:8080/admin/users/${targetId}`, {
+      const res = await fetch(`${apiUrl}/admin/users/${targetId}`, {
         method: 'DELETE',
         headers,
       });
@@ -76,7 +77,7 @@ export default function AdminPanel({ userId, onClose }: AdminPanelProps) {
   const handleToggleRole = async (targetId: string, currentRole: string) => {
     const newRole = currentRole === 'admin' ? 'user' : 'admin';
     try {
-      const res = await fetch(`http://localhost:8080/admin/users/${targetId}/role`, {
+      const res = await fetch(`${apiUrl}/admin/users/${targetId}/role`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ role: newRole }),
