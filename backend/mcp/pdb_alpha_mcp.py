@@ -12,6 +12,7 @@ BASE = os.path.dirname(os.path.dirname(__file__))  # Go up to backend/
 SERVERS_DIR = os.path.join(BASE, "mcp-servers")
 
 SERVERS = [
+    # ── Estructuras proteicas ──────────────────────────────────────────
     {
         "name": "pdb-server",
         "repo": "https://github.com/Augmented-Nature/PDB-MCP-Server.git",
@@ -20,12 +21,25 @@ SERVERS = [
         "name": "alphafold-server",
         "repo": "https://github.com/Augmented-Nature/AlphaFold-MCP-Server.git",
     },
+    # ── Literatura y ensayos clínicos ─────────────────────────────────
+    {
+        "name": "pubmed-server",
+        "repo": "https://github.com/Augmented-Nature/PubMed-MCP-Server.git",
+    },
+    {
+        "name": "clinicaltrials-server",
+        "repo": "https://github.com/Augmented-Nature/ClinicalTrials-MCP-Server.git",
+    },
+    # ── Química y fármacos ────────────────────────────────────────────
+    {
+        "name": "chembl-server",
+        "repo": "https://github.com/Augmented-Nature/ChEMBL-MCP-Server.git",
+    },
 ]
 
 
 def run(cmd: list[str], cwd: str) -> None:
     print(f"  $ {' '.join(cmd)}")
-    # If it's npm, find the full path
     if cmd[0] == "npm":
         npm_path = shutil.which("npm")
         if npm_path:

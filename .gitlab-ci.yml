@@ -1,0 +1,51 @@
+stages:
+  - test
+
+variables:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "18"
+
+backend_unit_tests:
+  stage: test
+  allow_failure: false
+  image: python:${PYTHON_VERSION}
+  before_script:
+    - cd backend
+    - python -m pip install --upgrade pip
+    - pip install -e ".[test]"
+  script:
+    - pytest tests/ -v --tb=short --cov=. --cov-report=term --cov-report=html:coverage_report --cov-report=xml
+  artifacts:
+    paths:
+      - backend/coverage_report/
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: backend/coverage.xml
+    when: always
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  only:
+    - branches
+    - merge_requests
+
+frontend_unit_tests:
+  stage: test
+  allow_failure: false
+  image: node:${NODE_VERSION}
+  before_script:
+    - cd frontend
+    - npm install
+  script:
+    - npm run test -- --coverage --reporter=verbose 2>&1 || true
+  artifacts:
+    paths:
+      - frontend/coverage/
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: frontend/coverage/cobertura-coverage.xml
+    when: always
+  coverage: '/Lines.*?(\d+\.\d+)%/'
+  only:
+    - branches
+    - merge_requests

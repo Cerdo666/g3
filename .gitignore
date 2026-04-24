@@ -1,6 +1,9 @@
 # MCP Servers (built locally, not committed)
 backend/mcp-servers/
 
+# Build artifacts
+builds/
+
 # Dependencies
 node_modules/
 .venv/
@@ -15,6 +18,9 @@ uv.lock
 # Environment
 .env
 .env.local
+config.toml
+**/config.toml
+*.local.toml
 
 # IDE
 .vscode/

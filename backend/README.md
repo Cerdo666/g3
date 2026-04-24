@@ -50,6 +50,27 @@ Server runs on http://127.0.0.1:8080
 
 Interactive API docs: http://127.0.0.1:8080/docs
 
+## Testing
+
+Install test dependencies:
+```bash
+pip install -e ".[test]"
+```
+
+Run unit tests:
+```bash
+pytest tests/ -v
+```
+
+Run tests with coverage report (HTML output):
+```bash
+pytest tests/ -v --cov=. --cov-report=html:coverage_report --cov-report=term
+```
+
+View the HTML coverage report in `backend/coverage_report/index.html`
+
+Tests are automatically run on every push/pull request via GitLab CI (see `.gitlab-ci.yml`).
+
 ## MCP Servers
 
 | Server | Source | What it provides |

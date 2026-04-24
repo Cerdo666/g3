@@ -1,23 +1,25 @@
-import { LogOut, FolderOpen, History } from 'lucide-react';
+import { LogOut, FolderOpen, History, ShieldCheck } from 'lucide-react';
 import logoImage from '../../assets/LogoOncoQuery.png';
 
 interface HeaderProps {
   onSignOut?: () => void;
   userEmail?: string;
   userName?: string;
+  userRole?: string;
   isAuthenticated?: boolean;
   onOpenSignIn?: () => void;
   onOpenRegister?: () => void;
   onOpenProjects?: () => void;
   onOpenHistory?: () => void;
+  onOpenAdmin?: () => void;
 }
 
-export default function Header({ onSignOut, userEmail, userName, isAuthenticated, onOpenSignIn, onOpenRegister, onOpenProjects, onOpenHistory }: HeaderProps) {
+export default function Header({ onSignOut, userEmail, userName, userRole, isAuthenticated, onOpenSignIn, onOpenRegister, onOpenProjects, onOpenHistory, onOpenAdmin }: HeaderProps) {
   return (
-    <header className="bg-[#662d3a] text-white px-6 py-3 flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-md flex items-center justify-center text-lg font-bold overflow-hidden">
+    <header className="bg-[#662d3a] text-white px-4 py-1.5 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-white/20 rounded-md flex items-center justify-center text-lg font-bold overflow-hidden">
             <img 
               src={logoImage}
               alt="OncoQuery Logo"
@@ -25,7 +27,7 @@ export default function Header({ onSignOut, userEmail, userName, isAuthenticated
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold" style={{ fontFamily: 'Comfortaa' }}>OncoQuery</span>
+            <span className="text-xl font-bold" style={{ fontFamily: 'Comfortaa' }}>OncoQuery</span>
             <span className="px-2 py-0.5 bg-white/20 rounded text-xs font-semibold">BETA</span>
           </div>
         </div>
@@ -48,6 +50,15 @@ export default function Header({ onSignOut, userEmail, userName, isAuthenticated
               <History className="w-4 h-4" />
               <span className="hidden sm:inline">History</span>
             </button>
+            {userRole === 'admin' && (
+              <button
+                onClick={onOpenAdmin}
+                className="px-4 py-1.5 border border-yellow-300 text-yellow-200 rounded hover:bg-white/10 transition-colors flex items-center gap-2"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span className="hidden sm:inline">Admin</span>
+              </button>
+            )}
           </>
         )}
         {isAuthenticated && userEmail && (

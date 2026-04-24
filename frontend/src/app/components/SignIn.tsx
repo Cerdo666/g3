@@ -3,20 +3,21 @@ import { Mail, Lock, Eye, EyeOff, X } from 'lucide-react';
 import logoImage from '../../assets/LogoOncoQuery.png';
 
 interface SignInProps {
-  onSignIn: (email: string) => void;
+  apiUrl: string;
+  onSignIn: (email: string, name: string, role?: string, id?: string) => void;
   onCancel?: () => void;
   onSwitchToRegister?: () => void;
   onForgotPassword?: () => void;
 }
 
-export default function SignIn({ onSignIn, onCancel, onSwitchToRegister, onForgotPassword }: SignInProps) {
+export default function SignIn({ apiUrl, onSignIn, onCancel, onSwitchToRegister, onForgotPassword }: SignInProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -31,12 +32,26 @@ export default function SignIn({ onSignIn, onCancel, onSwitchToRegister, onForgo
       return;
     }
 
-    // Simulate sign in
+    // Call backend to login
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch(`${apiUrl}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.detail || 'Invalid email or password');
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(false);
-      onSignIn(email);
-    }, 1000);
+      onSignIn(data.email, data.name, data.role, data.user_id);
+    } catch {
+      setError('Could not connect to server');
+      setIsLoading(false);
+    }
   };
 
   return (

@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "oncoquery-api"
 version = "0.1.0"
@@ -6,6 +10,22 @@ requires-python = ">=3.11"
 dependencies = [
     "github-copilot-sdk==0.2.2",
     "uniprot-mcp>=0.1.0",
-    "fastapi>=0.115.0",      
-    "uvicorn>=0.30.0",       
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "motor>=3.7.0",
+    "dnspython>=2.6.0",
+    "certifi>=2024.0.0",
+    "bcrypt>=4.0.0",
+    "email-validator>=2.3.0",
 ]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "httpx>=0.25.0",
+]
+
+[tool.setuptools]
+packages = ["mcp", "streaming"]

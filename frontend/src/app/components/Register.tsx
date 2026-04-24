@@ -3,12 +3,13 @@ import { Mail, Lock, Eye, EyeOff, X, User } from 'lucide-react';
 import logoImage from '../../assets/LogoOncoQuery.png';
 
 interface RegisterProps {
-  onRegister: (email: string, name: string) => void;
+  apiUrl: string;
+  onRegister: (email: string, name: string, role?: string, id?: string) => void;
   onCancel?: () => void;
   onSwitchToSignIn?: () => void;
 }
 
-export default function Register({ onRegister, onCancel, onSwitchToSignIn }: RegisterProps) {
+export default function Register({ apiUrl, onRegister, onCancel, onSwitchToSignIn }: RegisterProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,7 +20,7 @@ export default function Register({ onRegister, onCancel, onSwitchToSignIn }: Reg
   const [error, setError] = useState('');
   const [agreeToTerms, setAgreeToTerms] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -54,12 +55,26 @@ export default function Register({ onRegister, onCancel, onSwitchToSignIn }: Reg
       return;
     }
 
-    // Simulate registration
+    // Call backend to register
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch(`${apiUrl}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.detail || 'Registration failed');
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(false);
-      onRegister(email, name);
-    }, 1000);
+      onRegister(data.email, data.name, data.role, data.user_id);
+    } catch {
+      setError('Could not connect to server');
+      setIsLoading(false);
+    }
   };
 
   return (
