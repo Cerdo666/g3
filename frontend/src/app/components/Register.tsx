@@ -35,8 +35,10 @@ export default function Register({ apiUrl, onRegister, onCancel, onSwitchToSignI
       return;
     }
 
-    if (!email.includes('@')) {
-      setError('Please enter a valid email');
+    // Proper email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address (e.g., user@example.com)');
       return;
     }
 
