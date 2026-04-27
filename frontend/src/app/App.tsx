@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from './context/AuthContext';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import BubbleAnimation from './components/BubbleAnimation';
@@ -9,8 +10,8 @@ import AdminPanel from './components/AdminPanel';
 import Projects from './components/Projects';
 import History from './components/History';
 import ForgotPassword from './components/ForgotPassword';
-import PrivacyPolicy from './components/PrivacyPolicy';     // ← Nuevo
-import TermsOfService from './components/TermsOfService'; // ← Nuevo
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsOfService from './components/TermsOfService';
 import { Send, Menu } from 'lucide-react';
 
 // ── Hybrid API URL Detection ──────────────────────────────────────────
@@ -31,57 +32,42 @@ const API_URL = (() => {
 })();
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
-  const [userName, setUserName] = useState('');
-  const [userId, setUserId] = useState('');
-  const [userRole, setUserRole] = useState('');
+  const { isAuthenticated, userEmail, userName, userId, userRole, accessToken, setAuth, logout, restoreSession } = useAuth();
   const [showSignIn, setShowSignIn] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);     // ← Nuevo
-  const [showTerms, setShowTerms] = useState(false);         // ← Nuevo
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mcpServers, setMcpServers] = useState<string[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load MCP servers from backend
+  // Restore session and load MCP servers on mount
   useEffect(() => {
+    restoreSession();
+    
     fetch(`${API_URL}/status`)
       .then(r => r.json())
       .then(data => setMcpServers(data.mcp_servers ?? []))
       .catch(() => setMcpServers([]));
-  }, []);
+  }, [restoreSession]);
 
-  const handleSignIn = (email: string, name: string, role?: string, id?: string) => {
-    setUserEmail(email);
-    setUserName(name);
-    setUserRole(role || 'user');
-    setUserId(id || '');
-    setIsAuthenticated(true);
-    setShowSignIn(false);
-  };
-
-  const handleRegister = (email: string, name: string, role?: string, id?: string) => {
-    setUserEmail(email);
-    setUserName(name);
-    setUserRole(role || 'user');
-    setUserId(id || '');
-    setIsAuthenticated(true);
-    setShowRegister(false);
-  };
+  // Close auth modals when user successfully logs in
+  useEffect(() => {
+    if (isAuthenticated) {
+      setShowSignIn(false);
+      setShowRegister(false);
+    }
+  }, [isAuthenticated]);
 
   const handleSignOut = () => {
-    setIsAuthenticated(false);
-    setUserEmail('');
-    setUserName('');
-    setUserId('');
-    setUserRole('');
+    logout();
+    setMessages([]);
   };
 
   const handleOpenSignIn = () => {
@@ -98,7 +84,6 @@ export default function App() {
   const handleOpenHistory = () => setShowHistory(true);
   const handleOpenAdmin = () => setShowAdmin(true);
 
-  // Nuevas funciones para legal
   const handleOpenPrivacy = () => setShowPrivacy(true);
   const handleOpenTerms = () => setShowTerms(true);
 
@@ -117,7 +102,10 @@ export default function App() {
     try {
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({ message: input }),
       });
 
@@ -183,7 +171,6 @@ export default function App() {
     return (
       <SignIn 
         apiUrl={API_URL}
-        onSignIn={handleSignIn} 
         onCancel={() => setShowSignIn(false)}
         onSwitchToRegister={handleOpenRegister}
         onForgotPassword={() => { setShowSignIn(false); setShowForgotPassword(true); }}
@@ -199,7 +186,6 @@ export default function App() {
     return (
       <Register 
         apiUrl={API_URL}
-        onRegister={handleRegister} 
         onCancel={() => setShowRegister(false)}
         onSwitchToSignIn={handleOpenSignIn}
       />

@@ -1,15 +1,16 @@
 import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, Eye, EyeOff, X, User } from 'lucide-react';
 import logoImage from '../../assets/LogoOncoQuery.png';
 
 interface RegisterProps {
   apiUrl: string;
-  onRegister: (email: string, name: string, role?: string, id?: string) => void;
   onCancel?: () => void;
   onSwitchToSignIn?: () => void;
 }
 
-export default function Register({ apiUrl, onRegister, onCancel, onSwitchToSignIn }: RegisterProps) {
+export default function Register({ apiUrl, onCancel, onSwitchToSignIn }: RegisterProps) {
+  const { setAuth } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +37,7 @@ export default function Register({ apiUrl, onRegister, onCancel, onSwitchToSignI
     }
 
     // Proper email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(email)) {
       setError('Please enter a valid email address (e.g., user@example.com)');
       return;
@@ -72,7 +73,7 @@ export default function Register({ apiUrl, onRegister, onCancel, onSwitchToSignI
         return;
       }
       setIsLoading(false);
-      onRegister(data.email, data.name, data.role, data.user_id);
+      setAuth(data.email, data.name, data.user_id, data.role, data.access_token, data.refresh_token);
     } catch {
       setError('Could not connect to server');
       setIsLoading(false);

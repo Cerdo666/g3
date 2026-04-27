@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 import bcrypt
 from bson import ObjectId
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, EmailStr
@@ -17,6 +17,7 @@ from copilot.session import PermissionHandler
 from mcp import build_mcp_servers, on_pre_tool_use, on_post_tool_use, on_session_start, tool_events, set_mcp_server_names
 from streaming import SSEEvent
 from database import init_indexes, users, chat_sessions, export_logs
+from jwt_utils import create_access_token, create_refresh_token, verify_token
 
 logger = logging.getLogger("api")
 
@@ -139,7 +140,7 @@ class LoginRequest(BaseModel):
 # ── Endpoints ─────────────────────────────────────────────────────────
 @app.post("/register")
 async def register(req: RegisterRequest):
-    """Register a new user."""
+    """Register a new user and return JWT tokens."""
     existing = await users.find_one({"email": req.email})
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
@@ -150,20 +151,114 @@ async def register(req: RegisterRequest):
         "name": req.name,
         "hashed_password": hashed,
         "role": "user",
+        "refresh_tokens": [],
         "created_at": datetime.now(timezone.utc),
     }
     result = await users.insert_one(doc)
-    return {"ok": True, "user_id": str(result.inserted_id), "email": req.email, "name": req.name, "role": "user"}
+    user_id = str(result.inserted_id)
+    
+    # Generate tokens
+    access_token = create_access_token(user_id, req.email)
+    refresh_token = create_refresh_token(user_id)
+    
+    # Store refresh token in database
+    await users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$push": {"refresh_tokens": refresh_token}}
+    )
+    
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "email": req.email,
+        "name": req.name,
+        "role": "user",
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 
 @app.post("/login")
 async def login(req: LoginRequest):
-    """Authenticate user with email and password."""
+    """Authenticate user with email and password, return JWT tokens."""
     user = await users.find_one({"email": req.email})
     if not user or not bcrypt.checkpw(req.password.encode(), user["hashed_password"].encode()):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    return {"ok": True, "user_id": str(user["_id"]), "email": user["email"], "name": user.get("name", ""), "role": user.get("role", "user")}
+    user_id = str(user["_id"])
+    
+    # Generate tokens
+    access_token = create_access_token(user_id, req.email)
+    refresh_token = create_refresh_token(user_id)
+    
+    # Store refresh token in database
+    await users.update_one(
+        {"_id": user["_id"]},
+        {"$push": {"refresh_tokens": refresh_token}}
+    )
+    
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "email": user["email"],
+        "name": user.get("name", ""),
+        "role": user.get("role", "user"),
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+@app.post("/refresh")
+async def refresh(req: RefreshTokenRequest):
+    """Exchange a refresh token for a new access token."""
+    payload = verify_token(req.refresh_token, token_type="refresh")
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+    
+    user_id = payload.get("sub")
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=401, detail="Invalid user ID in token")
+    
+    user = await users.find_one({"_id": ObjectId(user_id)})
+    if not user or req.refresh_token not in user.get("refresh_tokens", []):
+        raise HTTPException(status_code=401, detail="Refresh token revoked or invalid")
+    
+    # Generate new access token
+    access_token = create_access_token(user_id, user["email"])
+    
+    return {
+        "ok": True,
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
+
+# ── Auth helpers ──────────────────────────────────────────────────────
+async def verify_jwt(authorization: str = Header(None)) -> str:
+    """Verify JWT access token and return user_id. Raises 401 if invalid."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Missing authorization header")
+    
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            raise HTTPException(status_code=401, detail="Invalid authorization scheme")
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid authorization header format")
+    
+    payload = verify_token(token, token_type="access")
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    user_id = payload.get("sub")
+    if not user_id or not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=401, detail="Invalid user in token")
+    
+    return user_id
 
 
 # ── Admin helpers ─────────────────────────────────────────────────────
@@ -248,7 +343,7 @@ async def status():
 
 
 @app.post("/chat")
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, user_id: str = Depends(verify_jwt)):
     """
     Recibe un mensaje y devuelve la respuesta como SSE streaming.
     El frontend lee los eventos con EventSource o fetch+ReadableStream.

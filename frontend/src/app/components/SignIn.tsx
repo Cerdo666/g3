@@ -1,16 +1,17 @@
 import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, Eye, EyeOff, X } from 'lucide-react';
 import logoImage from '../../assets/LogoOncoQuery.png';
 
 interface SignInProps {
   apiUrl: string;
-  onSignIn: (email: string, name: string, role?: string, id?: string) => void;
   onCancel?: () => void;
   onSwitchToRegister?: () => void;
   onForgotPassword?: () => void;
 }
 
-export default function SignIn({ apiUrl, onSignIn, onCancel, onSwitchToRegister, onForgotPassword }: SignInProps) {
+export default function SignIn({ apiUrl, onCancel, onSwitchToRegister, onForgotPassword }: SignInProps) {
+  const { setAuth } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -47,7 +48,7 @@ export default function SignIn({ apiUrl, onSignIn, onCancel, onSwitchToRegister,
         return;
       }
       setIsLoading(false);
-      onSignIn(data.email, data.name, data.role, data.user_id);
+      setAuth(data.email, data.name, data.user_id, data.role, data.access_token, data.refresh_token);
     } catch {
       setError('Could not connect to server');
       setIsLoading(false);
