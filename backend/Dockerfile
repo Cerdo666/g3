@@ -10,14 +10,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# 1) Install Python dependencies
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen
-
-# 2) Copy the rest of the backend code
+# Copy all code first (including mcp and streaming directories)
 COPY . .
 
-# 3) Clone and build the Node.js MCP servers at build time
+# Install Python dependencies
+RUN uv sync --frozen
+
+# Build the Node.js MCP servers at build time
 RUN uv run --frozen python mcp/pdb_alpha_mcp.py
 
 EXPOSE 8080

@@ -46,6 +46,98 @@ export default function App() {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [chatSessions, setChatSessions] = useState<any[]>([]);
+
+  // Load sessions from database
+  const loadChatSessions = async () => {
+    if (!accessToken) return;
+    try {
+      const res = await fetch(`${API_URL}/chat/sessions`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setChatSessions(data.sessions);
+      }
+    } catch (error) {
+      console.error('Failed to load sessions:', error);
+    }
+  };
+
+  // Load messages from a specific session
+  const loadSessionMessages = async (sessionId: string) => {
+    if (!accessToken) return;
+    try {
+      const res = await fetch(`${API_URL}/chat/session/${sessionId}`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setCurrentSessionId(sessionId);
+        sessionStorage.setItem('currentSessionId', sessionId);
+        setMessages(data.messages.map((msg: any) => ({
+          type: msg.role === 'user' ? 'user' : 'ai',
+          content: msg.content,
+        })));
+        setShowHistory(false);
+      }
+    } catch (error) {
+      console.error('Failed to load session:', error);
+    }
+  };
+
+  // Start a new chat session
+  const handleNewChat = () => {
+    setCurrentSessionId(null);
+    setMessages([]);
+    setInput('');
+    sessionStorage.removeItem('currentSessionId');
+    loadChatSessions();
+  };
+
+  // Delete a chat session
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!accessToken) return;
+    try {
+      const res = await fetch(`${API_URL}/chat/session/${sessionId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+      if (res.ok) {
+        // If deleting current session, clear it
+        if (sessionId === currentSessionId) {
+          setCurrentSessionId(null);
+          setMessages([]);
+          sessionStorage.removeItem('currentSessionId');
+        }
+        // Reload sessions list
+        loadChatSessions();
+      } else {
+        console.error('Failed to delete session:', res.status);
+      }
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+    }
+  };
+
+  // Rename a chat session
+  const handleRenameSession = async (sessionId: string, newTitle: string) => {
+    if (!accessToken) return;
+    try {
+      const res = await fetch(`${API_URL}/chat/session/${sessionId}/rename?title=${encodeURIComponent(newTitle)}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+      if (res.ok) {
+        loadChatSessions();
+      } else {
+        console.error('Failed to rename session:', res.status);
+      }
+    } catch (error) {
+      console.error('Failed to rename session:', error);
+    }
+  };
 
   // Restore session and load MCP servers on mount
   useEffect(() => {
@@ -56,6 +148,30 @@ export default function App() {
       .then(data => setMcpServers(data.mcp_servers ?? []))
       .catch(() => setMcpServers([]));
   }, [restoreSession]);
+
+  // Restore current session from sessionStorage when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && accessToken) {
+      const savedSessionId = sessionStorage.getItem('currentSessionId');
+      if (savedSessionId && !currentSessionId) {
+        loadSessionMessages(savedSessionId);
+      }
+    }
+  }, [isAuthenticated, accessToken]);
+
+  // Load chat sessions when authenticated
+  useEffect(() => {
+    if (isAuthenticated && accessToken) {
+      loadChatSessions();
+    }
+  }, [isAuthenticated, accessToken]);
+
+  // Save current session ID to sessionStorage when it changes
+  useEffect(() => {
+    if (currentSessionId) {
+      sessionStorage.setItem('currentSessionId', currentSessionId);
+    }
+  }, [currentSessionId]);
 
   // Close auth modals when user successfully logs in
   useEffect(() => {
@@ -91,13 +207,71 @@ export default function App() {
     setInput(query);
   };
 
+  // Create a new chat session when user starts chatting
+  const createNewSession = async () => {
+    if (!currentSessionId && isAuthenticated) {
+      try {
+        const res = await fetch(`${API_URL}/chat/session/new`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          setCurrentSessionId(data.session_id);
+          return data.session_id;
+        }
+      } catch (error) {
+        console.error('Failed to create session:', error);
+      }
+    }
+    return currentSessionId;
+  };
+
+  // Save a message to the database
+  const saveMessage = async (sessionId: string, role: string, content: string) => {
+    if (!sessionId) {
+      console.warn('No session ID for saving message');
+      return;
+    }
+    try {
+      const url = `${API_URL}/chat/session/${sessionId}/message?role=${role}&content=${encodeURIComponent(content)}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+      if (!res.ok) {
+        const error = await res.text();
+        console.error('Failed to save message:', res.status, error);
+      }
+    } catch (error) {
+      console.error('Failed to save message:', error);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
-    const userMsg = { type: 'user', content: input };
+    // Create session if needed
+    let sessionId = currentSessionId || (await createNewSession());
+    if (!sessionId) return;
+
+    const userContent = input;
+    const userMsg = { type: 'user', content: userContent };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
+
+    // Save user message
+    await saveMessage(sessionId, 'user', userContent);
+
+    let aiContent = '';
+    let aiToolCalls: any[] = [];
 
     try {
       const response = await fetch(`${API_URL}/chat`, {
@@ -106,15 +280,13 @@ export default function App() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ message: input }),
+        body: JSON.stringify({ message: userContent }),
       });
 
       if (!response.ok) throw new Error('Failed to send message');
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
-      let aiContent = '';
-      let aiToolCalls: any[] = [];
 
       const aiMsg = { type: 'ai', content: '', toolCalls: [] };
       setMessages(prev => [...prev, aiMsg]);
@@ -162,6 +334,10 @@ export default function App() {
       console.error('Error:', error);
       setMessages(prev => [...prev, { type: 'ai', content: 'Error connecting to backend.' }]);
     } finally {
+      // Save AI response to database
+      if (sessionId && aiContent) {
+        await saveMessage(sessionId, 'assistant', aiContent);
+      }
       setIsLoading(false);
     }
   };
@@ -201,7 +377,13 @@ export default function App() {
   }
 
   if (showHistory) {
-    return <History onClose={() => setShowHistory(false)} />;
+    return <History 
+      sessions={chatSessions} 
+      onClose={() => setShowHistory(false)} 
+      onLoadSession={loadSessionMessages}
+      onDeleteSession={handleDeleteSession}
+      onRenameSession={handleRenameSession}
+    />;
   }
 
   // ←←← NUEVOS MODALES LEGALES ←←←
@@ -227,6 +409,7 @@ export default function App() {
         onOpenProjects={handleOpenProjects}
         onOpenHistory={handleOpenHistory}
         onOpenAdmin={handleOpenAdmin}
+        onNewChat={handleNewChat}
       />
 
       <div className="flex-1 flex overflow-hidden min-h-0">

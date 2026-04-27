@@ -110,12 +110,11 @@ logger.info("CORS origins: %s", origins)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origin_regex=r"https://.*\.oncoquery\.pages\.dev",
+    allow_origins=["http://localhost:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 @app.get("/")
 async def health():
     return {"status": "ok"}
@@ -261,7 +260,6 @@ async def verify_jwt(authorization: str = Header(None)) -> str:
     return user_id
 
 
-# ── Admin helpers ─────────────────────────────────────────────────────
 async def require_admin(x_user_id: str = Header(...)):
     """Verify the caller is an admin. Expects X-User-Id header."""
     if not ObjectId.is_valid(x_user_id):
@@ -270,6 +268,149 @@ async def require_admin(x_user_id: str = Header(...)):
     if not caller or caller.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     return caller
+
+
+# ── Chat History Endpoints ────────────────────────────────────────────
+class NewChatSessionRequest(BaseModel):
+    title: str = None
+
+
+# ── Chat History Endpoints (continued) ────────────────────────────────
+@app.post("/chat/session/new")
+async def new_chat_session(req: NewChatSessionRequest = None, user_id: str = Depends(verify_jwt)):
+    """Create a new chat session for the user."""
+    doc = {
+        "user_id": user_id,
+        "project_id": None,
+        "title": req.title if req and req.title else "New Chat",
+        "mcp_sources_used": [],
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
+        "messages": [],
+    }
+    result = await chat_sessions.insert_one(doc)
+    return {
+        "ok": True,
+        "session_id": str(result.inserted_id),
+        "title": doc["title"],
+    }
+
+
+@app.post("/chat/session/{session_id}/message")
+async def add_message_to_session(session_id: str, role: str, content: str, user_id: str = Depends(verify_jwt)):
+    """Add a message to a chat session."""
+    if not ObjectId.is_valid(session_id):
+        raise HTTPException(status_code=400, detail="Invalid session ID")
+    
+    # Verify user owns this session
+    session = await chat_sessions.find_one({"_id": ObjectId(session_id)})
+    if not session or session["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Session not found or not authorized")
+    
+    # Add message
+    message = {
+        "role": role,
+        "content": content,
+        "sources_queried": [],
+        "timestamp": datetime.now(timezone.utc),
+    }
+    
+    # Auto-generate title from first user message
+    update_doc = {
+        "$push": {"messages": message},
+        "$set": {"updated_at": datetime.now(timezone.utc)}
+    }
+    
+    # If session title is still "New Chat" and this is a user message, generate title from first 100 chars
+    if session.get("title") == "New Chat" and role == "user":
+        title = content[:100] + ("..." if len(content) > 100 else "")
+        update_doc["$set"]["title"] = title
+    
+    await chat_sessions.update_one(
+        {"_id": ObjectId(session_id)},
+        update_doc
+    )
+    
+    return {"ok": True}
+
+
+@app.get("/chat/sessions")
+async def list_chat_sessions(user_id: str = Depends(verify_jwt)):
+    """Get all chat sessions for the user."""
+    cursor = chat_sessions.find({"user_id": user_id}).sort("updated_at", -1)
+    sessions = []
+    async for doc in cursor:
+        sessions.append({
+            "session_id": str(doc["_id"]),
+            "title": doc.get("title", "Untitled"),
+            "created_at": doc.get("created_at"),
+            "updated_at": doc.get("updated_at"),
+            "message_count": len(doc.get("messages", [])),
+            "mcp_sources_used": doc.get("mcp_sources_used", []),
+        })
+    return {"ok": True, "sessions": sessions}
+
+
+@app.get("/chat/session/{session_id}")
+async def get_chat_session(session_id: str, user_id: str = Depends(verify_jwt)):
+    """Get a specific chat session with all messages."""
+    if not ObjectId.is_valid(session_id):
+        raise HTTPException(status_code=400, detail="Invalid session ID")
+    
+    session = await chat_sessions.find_one({"_id": ObjectId(session_id)})
+    if not session or session["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Session not found or not authorized")
+    
+    return {
+        "ok": True,
+        "session_id": str(session["_id"]),
+        "title": session.get("title", "Untitled"),
+        "created_at": session.get("created_at"),
+        "updated_at": session.get("updated_at"),
+        "messages": session.get("messages", []),
+        "mcp_sources_used": session.get("mcp_sources_used", []),
+    }
+
+
+@app.delete("/chat/session/{session_id}")
+async def delete_chat_session(session_id: str, user_id: str = Depends(verify_jwt)):
+    """Delete a chat session."""
+    if not ObjectId.is_valid(session_id):
+        raise HTTPException(status_code=400, detail="Invalid session ID")
+    
+    session = await chat_sessions.find_one({"_id": ObjectId(session_id)})
+    if not session or session["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Session not found or not authorized")
+    
+    result = await chat_sessions.delete_one({"_id": ObjectId(session_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    return {"ok": True}
+
+
+@app.post("/chat/session/{session_id}/rename")
+async def rename_chat_session(session_id: str, title: str, user_id: str = Depends(verify_jwt)):
+    """Rename a chat session."""
+    if not ObjectId.is_valid(session_id):
+        raise HTTPException(status_code=400, detail="Invalid session ID")
+    
+    if not title or len(title.strip()) == 0:
+        raise HTTPException(status_code=400, detail="Title cannot be empty")
+    
+    session = await chat_sessions.find_one({"_id": ObjectId(session_id)})
+    if not session or session["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Session not found or not authorized")
+    
+    result = await chat_sessions.update_one(
+        {"_id": ObjectId(session_id)},
+        {"$set": {"title": title.strip(), "updated_at": datetime.now(timezone.utc)}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    return {"ok": True, "title": title.strip()}
 
 
 # ── Admin Endpoints ───────────────────────────────────────────────────

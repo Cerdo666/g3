@@ -13,9 +13,10 @@ interface HeaderProps {
   onOpenProjects?: () => void;
   onOpenHistory?: () => void;
   onOpenAdmin?: () => void;
+  onNewChat?: () => void;
 }
 
-export default function Header({ onSignOut, userEmail, userName, userRole, isAuthenticated, onOpenSignIn, onOpenRegister, onOpenProjects, onOpenHistory, onOpenAdmin }: HeaderProps) {
+export default function Header({ onSignOut, userEmail, userName, userRole, isAuthenticated, onOpenSignIn, onOpenRegister, onOpenProjects, onOpenHistory, onOpenAdmin, onNewChat }: HeaderProps) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const handleLogoutClick = () => {
@@ -60,6 +61,13 @@ export default function Header({ onSignOut, userEmail, userName, userRole, isAut
             >
               <History className="w-4 h-4" />
               <span className="hidden sm:inline">History</span>
+            </button>
+            <button
+              onClick={onNewChat}
+              className="px-4 py-1.5 border border-white rounded hover:bg-white/10 transition-colors flex items-center gap-2"
+            >
+              <span className="hidden sm:inline">+ New Chat</span>
+              <span className="sm:hidden">+</span>
             </button>
             {userRole === 'admin' && (
               <button
