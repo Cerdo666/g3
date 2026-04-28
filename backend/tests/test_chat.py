@@ -63,83 +63,97 @@ class TestChatEndpoint:
     @pytest.mark.asyncio
     async def test_chat_streaming_response_headers(self):
         """Test /chat endpoint returns proper streaming headers."""
-        from api import app
+        from api import app, verify_jwt
         from fastapi.testclient import TestClient
         
         client = TestClient(app)
         
-        with patch('api.get_session') as mock_get_session:
-            # Mock session that triggers session.idle event
-            mock_session = AsyncMock()
-            
-            # Capture the on_event callback and trigger it
-            captured_callback = None
-            def capture_callback(callback):
-                nonlocal captured_callback
-                captured_callback = callback
-                return lambda: None  # Return unsubscribe function
-            
-            mock_session.on = Mock(side_effect=capture_callback)
-            
-            # When send is called, trigger the idle event to complete the stream
-            async def trigger_idle(message):
-                if captured_callback:
-                    # Simulate a session.idle event to complete the stream
-                    class IdleEvent:
-                        class Type:
-                            value = "session.idle"
-                        type = Type()
-                    captured_callback(IdleEvent())
-            
-            mock_session.send = AsyncMock(side_effect=trigger_idle)
-            mock_get_session.return_value = mock_session
-            
-            response = client.post("/chat", json={"message": "test"})
-            
-            # Verify streaming headers
-            assert response.headers.get("content-type", "").startswith("text/event-stream")
-            assert response.headers.get("cache-control") == "no-cache"
-            assert response.headers.get("x-accel-buffering") == "no"
+        # Override the verify_jwt dependency
+        app.dependency_overrides[verify_jwt] = lambda: 'test-user-id'
+        
+        try:
+            with patch('api.get_session') as mock_get_session:
+                # Mock session that triggers session.idle event
+                mock_session = AsyncMock()
+                
+                # Capture the on_event callback and trigger it
+                captured_callback = None
+                def capture_callback(callback):
+                    nonlocal captured_callback
+                    captured_callback = callback
+                    return lambda: None  # Return unsubscribe function
+                
+                mock_session.on = Mock(side_effect=capture_callback)
+                
+                # When send is called, trigger the idle event to complete the stream
+                async def trigger_idle(message):
+                    if captured_callback:
+                        # Simulate a session.idle event to complete the stream
+                        class IdleEvent:
+                            class Type:
+                                value = "session.idle"
+                            type = Type()
+                        captured_callback(IdleEvent())
+                
+                mock_session.send = AsyncMock(side_effect=trigger_idle)
+                mock_get_session.return_value = mock_session
+                
+                response = client.post("/chat", json={"message": "test"})
+                
+                # Verify streaming headers
+                assert response.headers.get("content-type", "").startswith("text/event-stream")
+                assert response.headers.get("cache-control") == "no-cache"
+                assert response.headers.get("x-accel-buffering") == "no"
+        finally:
+            # Clean up the override
+            del app.dependency_overrides[verify_jwt]
 
     @pytest.mark.asyncio
     async def test_chat_sends_message_to_session(self):
         """Test /chat sends the user message to the session."""
-        from api import app
+        from api import app, verify_jwt
         from fastapi.testclient import TestClient
         
         client = TestClient(app)
         test_message = "What is protein folding?"
         
-        with patch('api.get_session') as mock_get_session:
-            mock_session = AsyncMock()
-            
-            # Capture the on_event callback and trigger it
-            captured_callback = None
-            def capture_callback(callback):
-                nonlocal captured_callback
-                captured_callback = callback
-                return lambda: None  # Return unsubscribe function
-            
-            mock_session.on = Mock(side_effect=capture_callback)
-            
-            # When send is called, trigger the idle event to complete the stream
-            async def trigger_idle(message):
-                if captured_callback:
-                    # Simulate a session.idle event to complete the stream
-                    class IdleEvent:
-                        class Type:
-                            value = "session.idle"
-                        type = Type()
-                    captured_callback(IdleEvent())
-            
-            mock_session.send = AsyncMock(side_effect=trigger_idle)
-            mock_get_session.return_value = mock_session
-            
-            response = client.post("/chat", json={"message": test_message})
-            
-            # Verify send was called with correct message
-            assert mock_session.send.called
-            assert mock_session.on.called
+        # Override the verify_jwt dependency
+        app.dependency_overrides[verify_jwt] = lambda: 'test-user-id'
+        
+        try:
+            with patch('api.get_session') as mock_get_session:
+                mock_session = AsyncMock()
+                
+                # Capture the on_event callback and trigger it
+                captured_callback = None
+                def capture_callback(callback):
+                    nonlocal captured_callback
+                    captured_callback = callback
+                    return lambda: None  # Return unsubscribe function
+                
+                mock_session.on = Mock(side_effect=capture_callback)
+                
+                # When send is called, trigger the idle event to complete the stream
+                async def trigger_idle(message):
+                    if captured_callback:
+                        # Simulate a session.idle event to complete the stream
+                        class IdleEvent:
+                            class Type:
+                                value = "session.idle"
+                            type = Type()
+                        captured_callback(IdleEvent())
+                
+                mock_session.send = AsyncMock(side_effect=trigger_idle)
+                mock_get_session.return_value = mock_session
+                
+                response = client.post("/chat", json={"message": test_message})
+                
+                # Verify send was called with correct message
+                assert mock_session.send.called
+                assert mock_session.on.called
+        finally:
+            # Clean up the override
+            del app.dependency_overrides[verify_jwt]
 
     @pytest.mark.asyncio
     async def test_chat_event_handling_content_delta(self):
@@ -200,14 +214,21 @@ class TestChatEndpoint:
     @pytest.mark.asyncio
     async def test_chat_request_validation(self):
         """Test /chat rejects invalid requests."""
-        from api import app
+        from api import app, verify_jwt
         from fastapi.testclient import TestClient
         
         client = TestClient(app)
         
-        # Missing message field
-        response = client.post("/chat", json={})
-        assert response.status_code == 422  # Validation error
+        # Override the verify_jwt dependency
+        app.dependency_overrides[verify_jwt] = lambda: 'test-user-id'
+        
+        try:
+            # Missing message field
+            response = client.post("/chat", json={})
+            assert response.status_code == 422  # Validation error
+        finally:
+            # Clean up the override
+            del app.dependency_overrides[verify_jwt]
 
     @pytest.mark.asyncio
     async def test_chat_empty_message_handling(self):
