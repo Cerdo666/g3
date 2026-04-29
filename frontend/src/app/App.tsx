@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -13,6 +13,7 @@ import ForgotPassword from './components/ForgotPassword';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
 import { Send, Menu } from 'lucide-react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 
 // ── Hybrid API URL Detection ──────────────────────────────────────────
 const API_URL = (() => {
@@ -31,8 +32,37 @@ const API_URL = (() => {
   return `${protocol}//${host}`;
 })();
 
+
+const detectExportFormat = (text: string): 'csv' | 'doc' | 'pdf' | null => {
+  const lower = text.toLowerCase();
+  if (!lower.includes('export')) return null;
+  if (lower.includes('csv')) return 'csv';
+  if (lower.includes('word') || lower.includes('doc')) return 'doc';
+  if (lower.includes('pdf')) return 'pdf';
+  return null;
+};
+
+const downloadResponse = (format: 'csv' | 'doc' | 'pdf', content: string) => {
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const baseName = `oncoquery-export-${timestamp}`;
+  const payload = format === 'csv'
+    ? `section,text\nresponse,"${content.replace(/"/g, '""').replace(/\n/g, ' ')}"`
+    : content;
+  const mime = format === 'csv' ? 'text/csv;charset=utf-8' : format === 'pdf' ? 'application/pdf' : 'application/msword';
+  const ext = format === 'csv' ? 'csv' : format === 'pdf' ? 'pdf' : 'doc';
+  const blob = new Blob([payload], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${baseName}.${ext}`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 export default function App() {
   const { isAuthenticated, userEmail, userName, userId, userRole, accessToken, setAuth, logout, restoreSession } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [showSignIn, setShowSignIn] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -48,6 +78,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [chatSessions, setChatSessions] = useState<any[]>([]);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Load sessions from database
   const loadChatSessions = async () => {
@@ -166,6 +197,12 @@ export default function App() {
     }
   }, [isAuthenticated, accessToken]);
 
+  useEffect(() => {
+    if (location.pathname === '/' && isAuthenticated) {
+      navigate('/chat', { replace: true });
+    }
+  }, [location.pathname, isAuthenticated, navigate]);
+
   // Save current session ID to sessionStorage when it changes
   useEffect(() => {
     if (currentSessionId) {
@@ -272,6 +309,7 @@ export default function App() {
 
     let aiContent = '';
     let aiToolCalls: any[] = [];
+    const exportFormat = detectExportFormat(userContent);
 
     try {
       const response = await fetch(`${API_URL}/chat`, {
@@ -338,6 +376,9 @@ export default function App() {
       if (sessionId && aiContent) {
         await saveMessage(sessionId, 'assistant', aiContent);
       }
+      if (exportFormat && aiContent) {
+        downloadResponse(exportFormat, aiContent);
+      }
       setIsLoading(false);
     }
   };
@@ -396,6 +437,10 @@ export default function App() {
   }
 
   // ==================== RENDER PRINCIPAL ====================
+  if (location.pathname === '/chat' && !isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
   return (
     <div className="h-screen w-screen flex flex-col bg-white overflow-hidden">
       <Header 
@@ -488,18 +533,30 @@ export default function App() {
 
             {/* Input Bar */}
             <div className="flex items-center gap-3 flex-shrink-0 w-full bg-white border border-gray-300 rounded-full px-4 py-1 shadow-sm focus-within:ring-2 focus-within:ring-[#662d3a] focus-within:border-transparent transition-shadow">
-              <input
-                type="text"
+              <textarea
+                ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
+                  if (e.key === 'Enter' && !e.ctrlKey) {
                     e.preventDefault();
                     handleSendMessage();
                   }
+                  if (e.key === 'Enter' && e.ctrlKey) {
+                    e.preventDefault();
+                    const target = e.currentTarget;
+                    const start = target.selectionStart;
+                    const end = target.selectionEnd;
+                    const updated = `${input.slice(0, start)}\n${input.slice(end)}`;
+                    setInput(updated);
+                    requestAnimationFrame(() => {
+                      target.selectionStart = target.selectionEnd = start + 1;
+                    });
+                  }
                 }}
+                rows={1}
                 placeholder="Ask me anything about breast cancer proteins, variants, trials or recent literature..."
-                className="flex-1 py-2 text-sm bg-transparent outline-none placeholder:text-gray-400 disabled:opacity-50"
+                className="flex-1 py-2 text-sm bg-transparent outline-none placeholder:text-gray-400 disabled:opacity-50 resize-none overflow-y-auto max-h-32 leading-6"
                 disabled={isLoading}
               />
               <button 
