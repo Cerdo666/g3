@@ -223,22 +223,16 @@ export default function App() {
     setMessages([]);
   };
 
-  const handleOpenSignIn = () => {
-    setShowSignIn(true);
-    setShowRegister(false);
-  };
+  const handleOpenSignIn = () => navigate('/login');
 
-  const handleOpenRegister = () => {
-    setShowRegister(true);
-    setShowSignIn(false);
-  };
+  const handleOpenRegister = () => navigate('/logup');
 
   const handleOpenProjects = () => setShowProjects(true);
-  const handleOpenHistory = () => setShowHistory(true);
+  const handleOpenHistory = () => navigate('/history');
   const handleOpenAdmin = () => setShowAdmin(true);
 
-  const handleOpenPrivacy = () => setShowPrivacy(true);
-  const handleOpenTerms = () => setShowTerms(true);
+  const handleOpenPrivacy = () => navigate('/privacy-policy');
+  const handleOpenTerms = () => navigate('/terms');
 
   const handleQuerySelect = (query: string) => {
     setInput(query);
@@ -384,13 +378,14 @@ export default function App() {
   };
 
   // ==================== RENDER MODALES ====================
-  if (showSignIn) {
+  if (location.pathname === '/login') {
+    if (isAuthenticated) return <Navigate to="/chat" replace />;
     return (
       <SignIn 
         apiUrl={API_URL}
-        onCancel={() => setShowSignIn(false)}
-        onSwitchToRegister={handleOpenRegister}
-        onForgotPassword={() => { setShowSignIn(false); setShowForgotPassword(true); }}
+        onCancel={() => navigate('/')}
+        onSwitchToRegister={() => navigate('/logup')}
+        onForgotPassword={() => { navigate('/login'); setShowForgotPassword(true); }}
       />
     );
   }
@@ -399,12 +394,13 @@ export default function App() {
     return <ForgotPassword onBack={() => { setShowForgotPassword(false); setShowSignIn(true); }} />;
   }
 
-  if (showRegister) {
+  if (location.pathname === '/logup') {
+    if (isAuthenticated) return <Navigate to="/chat" replace />;
     return (
       <Register 
         apiUrl={API_URL}
-        onCancel={() => setShowRegister(false)}
-        onSwitchToSignIn={handleOpenSignIn}
+        onCancel={() => navigate('/')}
+        onSwitchToSignIn={() => navigate('/login')}
       />
     );
   }
@@ -417,10 +413,11 @@ export default function App() {
     return <Projects onClose={() => setShowProjects(false)} />;
   }
 
-  if (showHistory) {
+  if (location.pathname === '/history') {
+    if (!isAuthenticated) return <Navigate to="/login" replace />;
     return <History 
       sessions={chatSessions} 
-      onClose={() => setShowHistory(false)} 
+      onClose={() => navigate('/chat')} 
       onLoadSession={loadSessionMessages}
       onDeleteSession={handleDeleteSession}
       onRenameSession={handleRenameSession}
@@ -428,12 +425,12 @@ export default function App() {
   }
 
   // ←←← NUEVOS MODALES LEGALES ←←←
-  if (showPrivacy) {
-    return <PrivacyPolicy onClose={() => setShowPrivacy(false)} />;
+  if (location.pathname === '/privacy-policy') {
+    return <PrivacyPolicy onClose={() => navigate(-1)} />;
   }
 
-  if (showTerms) {
-    return <TermsOfService onClose={() => setShowTerms(false)} />;
+  if (location.pathname === '/terms') {
+    return <TermsOfService onClose={() => navigate(-1)} />;
   }
 
   // ==================== RENDER PRINCIPAL ====================
@@ -536,7 +533,10 @@ export default function App() {
               <textarea
                 ref={inputRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  resizeTextarea(e.target);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.ctrlKey) {
                     e.preventDefault();
