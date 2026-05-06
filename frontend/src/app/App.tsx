@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -13,6 +13,7 @@ import ForgotPassword from './components/ForgotPassword';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
 import { Send, Menu } from 'lucide-react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 
 // ── Hybrid API URL Detection ──────────────────────────────────────────
 const API_URL = (() => {
@@ -31,8 +32,67 @@ const API_URL = (() => {
   return `${protocol}//${host}`;
 })();
 
+
+const detectExportFormat = (text: string): 'csv' | 'doc' | 'pdf' | null => {
+  const lower = text.toLowerCase();
+  if (!lower.includes('export')) return null;
+  if (lower.includes('csv')) return 'csv';
+  if (lower.includes('word') || lower.includes('doc')) return 'doc';
+  if (lower.includes('pdf')) return 'pdf';
+  return null;
+};
+
+const downloadResponse = (format: 'csv' | 'doc' | 'pdf', content: string) => {
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const baseName = `oncoquery-export-${timestamp}`;
+  const payload = format === 'csv'
+    ? `section,text\nresponse,"${content.replace(/"/g, '""').replace(/\n/g, ' ')}"`
+    : content;
+  const mime = format === 'csv' ? 'text/csv;charset=utf-8' : format === 'pdf' ? 'application/pdf' : 'application/msword';
+  const ext = format === 'csv' ? 'csv' : format === 'pdf' ? 'pdf' : 'doc';
+  const blob = new Blob([payload], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${baseName}.${ext}`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+const extractExportPayload = (format: 'csv' | 'doc' | 'pdf', content: string): string => {
+  if (format === 'csv') {
+    const csvBlock = content.match(/```csv\s*([\s\S]*?)```/i);
+    if (csvBlock?.[1]) return csvBlock[1].trim();
+
+    const genericBlock = content.match(/```([\s\S]*?)```/);
+    if (genericBlock?.[1] && genericBlock[1].includes(',')) return genericBlock[1].trim();
+
+    const tableLines = content
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.startsWith('|') && line.endsWith('|'));
+
+    if (tableLines.length >= 2) {
+      return tableLines
+        .filter(line => !/^(\|\s*[-:]+\s*)+\|$/.test(line.replace(/\s+/g, '')))
+        .map(line =>
+          line
+            .slice(1, -1)
+            .split('|')
+            .map(cell => `"${cell.trim().replace(/"/g, '""')}"`)
+            .join(',')
+        )
+        .join('\n');
+    }
+  }
+
+  return content.trim();
+};
+
 export default function App() {
-  const { isAuthenticated, userEmail, userName, userId, userRole, accessToken, setAuth, logout, restoreSession } = useAuth();
+  const { isAuthenticated, userEmail, userName, userId, userRole, accessToken, logout, restoreSession } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [showSignIn, setShowSignIn] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -48,6 +108,16 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [chatSessions, setChatSessions] = useState<any[]>([]);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const MAX_INPUT_ROWS = 5;
+  const LINE_HEIGHT_PX = 24;
+
+  const resizeTextarea = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    const maxHeight = MAX_INPUT_ROWS * LINE_HEIGHT_PX;
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+  };
 
   // Load sessions from database
   const loadChatSessions = async () => {
@@ -166,6 +236,10 @@ export default function App() {
     }
   }, [isAuthenticated, accessToken]);
 
+  useEffect(() => {
+    resizeTextarea(inputRef.current);
+  }, [input]);
+
   // Save current session ID to sessionStorage when it changes
   useEffect(() => {
     if (currentSessionId) {
@@ -186,22 +260,16 @@ export default function App() {
     setMessages([]);
   };
 
-  const handleOpenSignIn = () => {
-    setShowSignIn(true);
-    setShowRegister(false);
-  };
+  const handleOpenSignIn = () => navigate('/login');
 
-  const handleOpenRegister = () => {
-    setShowRegister(true);
-    setShowSignIn(false);
-  };
+  const handleOpenRegister = () => navigate('/logup');
 
   const handleOpenProjects = () => setShowProjects(true);
-  const handleOpenHistory = () => setShowHistory(true);
+  const handleOpenHistory = () => navigate('/history');
   const handleOpenAdmin = () => setShowAdmin(true);
 
-  const handleOpenPrivacy = () => setShowPrivacy(true);
-  const handleOpenTerms = () => setShowTerms(true);
+  const handleOpenPrivacy = () => navigate('/privacy-policy');
+  const handleOpenTerms = () => navigate('/terms');
 
   const handleQuerySelect = (query: string) => {
     setInput(query);
@@ -272,6 +340,7 @@ export default function App() {
 
     let aiContent = '';
     let aiToolCalls: any[] = [];
+    const exportFormat = detectExportFormat(userContent);
 
     try {
       const response = await fetch(`${API_URL}/chat`, {
@@ -338,18 +407,23 @@ export default function App() {
       if (sessionId && aiContent) {
         await saveMessage(sessionId, 'assistant', aiContent);
       }
+      if (exportFormat && aiContent) {
+        const payload = extractExportPayload(exportFormat, aiContent);
+        downloadResponse(exportFormat, payload);
+      }
       setIsLoading(false);
     }
   };
 
   // ==================== RENDER MODALES ====================
-  if (showSignIn) {
+  if (location.pathname === '/login') {
+    if (isAuthenticated) return <Navigate to="/chat" replace />;
     return (
       <SignIn 
         apiUrl={API_URL}
-        onCancel={() => setShowSignIn(false)}
-        onSwitchToRegister={handleOpenRegister}
-        onForgotPassword={() => { setShowSignIn(false); setShowForgotPassword(true); }}
+        onCancel={() => navigate('/')}
+        onSwitchToRegister={() => navigate('/logup')}
+        onForgotPassword={() => { navigate('/login'); setShowForgotPassword(true); }}
       />
     );
   }
@@ -358,12 +432,13 @@ export default function App() {
     return <ForgotPassword onBack={() => { setShowForgotPassword(false); setShowSignIn(true); }} />;
   }
 
-  if (showRegister) {
+  if (location.pathname === '/logup') {
+    if (isAuthenticated) return <Navigate to="/chat" replace />;
     return (
       <Register 
         apiUrl={API_URL}
-        onCancel={() => setShowRegister(false)}
-        onSwitchToSignIn={handleOpenSignIn}
+        onCancel={() => navigate('/')}
+        onSwitchToSignIn={() => navigate('/login')}
       />
     );
   }
@@ -376,10 +451,11 @@ export default function App() {
     return <Projects onClose={() => setShowProjects(false)} />;
   }
 
-  if (showHistory) {
+  if (location.pathname === '/history') {
+    if (!isAuthenticated) return <Navigate to="/login" replace />;
     return <History 
       sessions={chatSessions} 
-      onClose={() => setShowHistory(false)} 
+      onClose={() => navigate('/chat')} 
       onLoadSession={loadSessionMessages}
       onDeleteSession={handleDeleteSession}
       onRenameSession={handleRenameSession}
@@ -387,15 +463,23 @@ export default function App() {
   }
 
   // ←←← NUEVOS MODALES LEGALES ←←←
-  if (showPrivacy) {
-    return <PrivacyPolicy onClose={() => setShowPrivacy(false)} />;
+  if (location.pathname === '/privacy-policy') {
+    return <PrivacyPolicy onClose={() => navigate(-1)} />;
   }
 
-  if (showTerms) {
-    return <TermsOfService onClose={() => setShowTerms(false)} />;
+  if (location.pathname === '/terms') {
+    return <TermsOfService onClose={() => navigate(-1)} />;
   }
 
   // ==================== RENDER PRINCIPAL ====================
+  if (location.pathname === '/') {
+    return <Navigate to={isAuthenticated ? '/chat' : '/login'} replace />;
+  }
+
+  if (location.pathname === '/chat' && !isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
     <div className="h-screen w-screen flex flex-col bg-white overflow-hidden">
       <Header 
@@ -487,19 +571,38 @@ export default function App() {
             </div>
 
             {/* Input Bar */}
-            <div className="flex items-center gap-3 flex-shrink-0 w-full bg-white border border-gray-300 rounded-full px-4 py-1 shadow-sm focus-within:ring-2 focus-within:ring-[#662d3a] focus-within:border-transparent transition-shadow">
-              <input
-                type="text"
+            <div className="flex items-end gap-3 flex-shrink-0 w-full bg-white border border-gray-300 rounded-2xl px-4 py-2 shadow-sm focus-within:ring-2 focus-within:ring-[#662d3a] focus-within:border-transparent transition-shadow">
+              <textarea
+                ref={inputRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  resizeTextarea(e.target);
+                }}
                 onKeyDown={(e) => {
+                  const isModifierEnter = e.ctrlKey || e.metaKey;
+                  if (e.key === 'Enter' && isModifierEnter) {
+                    e.preventDefault();
+                    const target = e.currentTarget;
+                    const start = target.selectionStart;
+                    const end = target.selectionEnd;
+                    const updated = `${input.slice(0, start)}\n${input.slice(end)}`;
+                    setInput(updated);
+                    requestAnimationFrame(() => {
+                      resizeTextarea(target);
+                      target.selectionStart = target.selectionEnd = start + 1;
+                    });
+                    return;
+                  }
+
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     handleSendMessage();
                   }
                 }}
+                rows={1}
                 placeholder="Ask me anything about breast cancer proteins, variants, trials or recent literature..."
-                className="flex-1 py-2 text-sm bg-transparent outline-none placeholder:text-gray-400 disabled:opacity-50"
+                className="flex-1 py-1 text-sm bg-transparent outline-none placeholder:text-gray-400 disabled:opacity-50 resize-none overflow-y-auto leading-6 min-h-[24px] max-h-[120px]"
                 disabled={isLoading}
               />
               <button 
