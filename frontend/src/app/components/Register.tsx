@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, Eye, EyeOff, X, User } from 'lucide-react';
 import logoImage from '../../assets/LogoOncoQuery.png';
@@ -11,6 +12,7 @@ interface RegisterProps {
 
 export default function Register({ apiUrl, onCancel, onSwitchToSignIn }: RegisterProps) {
   const { setAuth } = useAuth();
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -239,11 +241,11 @@ export default function Register({ apiUrl, onCancel, onSwitchToSignIn }: Registe
               />
               <span className="text-xs text-[#6b7280]">
                 I agree to the{' '}
-                <button type="button" className="text-[#662d3a] hover:underline font-medium">
+                <button type="button" onClick={() => navigate('/terms')} className="text-[#662d3a] hover:underline font-medium">
                   Terms and Conditions
                 </button>
                 {' '}and{' '}
-                <button type="button" className="text-[#662d3a] hover:underline font-medium">
+                <button type="button" onClick={() => navigate('/privacy-policy')} className="text-[#662d3a] hover:underline font-medium">
                   Privacy Policy
                 </button>
               </span>

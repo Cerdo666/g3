@@ -1,6 +1,25 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+function normalizeStreamingArtifacts(raw: string): string {
+  return raw.replace(/([a-zA-Z]+):(?=[A-Z])/g, '$1: ').replace(/\n{3,}/g, '\n\n').trimStart();
+}
+
+function splitThinkingSection(content: string): { thinking: string | null; response: string } {
+  const normalized = normalizeStreamingArtifacts(content);
+  const match = normalized.match(/^(thinking|reasoning)\s*:\s*([\s\S]*?)\n{2,}([\s\S]*)$/i);
+  if (!match) return { thinking: null, response: normalized };
+  return { thinking: match[2].trim(), response: match[3].trim() };
+}
+
+function splitFirstParagraph(content: string): { firstParagraph: string | null; rest: string } {
+  const normalized = normalizeStreamingArtifacts(content).trim();
+  if (!normalized) return { firstParagraph: null, rest: '' };
+  const parts = normalized.split(/\n{2,}/);
+  if (parts.length < 2) return { firstParagraph: null, rest: normalized };
+  return { firstParagraph: parts[0].trim(), rest: parts.slice(1).join('\n\n').trim() };
+}
+
 interface ToolCall {
   name: string;
   status: 'calling' | 'done' | 'error';
@@ -63,6 +82,12 @@ function ToolCallsSection({ toolCalls }: { toolCalls: ToolCall[] }) {
 }
 
 export default function ChatMessage({ type, content, sources, isStreaming, toolCalls }: ChatMessageProps) {
+  const parsedContent = content ? splitThinkingSection(content) : { thinking: null, response: '' };
+  const shouldEmphasizeFirstParagraph = Boolean(toolCalls && toolCalls.length > 0 && content);
+  const firstParagraphSplit = shouldEmphasizeFirstParagraph
+    ? splitFirstParagraph(parsedContent.response || '')
+    : { firstParagraph: null, rest: parsedContent.response || '' };
+
   if (type === 'ai') {
     return (
       <div className="mb-6">
@@ -70,9 +95,16 @@ export default function ChatMessage({ type, content, sources, isStreaming, toolC
           {toolCalls && toolCalls.length > 0 && (
             <ToolCallsSection toolCalls={toolCalls} />
           )}
-          {content && (
+          {shouldEmphasizeFirstParagraph && firstParagraphSplit.firstParagraph && (
+            <p className="mb-3 text-[0.95rem] leading-relaxed italic text-gray-500">
+              {firstParagraphSplit.firstParagraph}
+            </p>
+          )}
+          {(firstParagraphSplit.rest || (!shouldEmphasizeFirstParagraph && parsedContent.response)) && (
             <div className="text-[#1a1a1a] leading-relaxed prose prose-sm max-w-none prose-headings:text-[#662d3a] prose-a:text-[#662d3a] prose-code:bg-gray-200 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-pre:bg-gray-800 prose-pre:text-gray-100 prose-pre:rounded-lg prose-pre:overflow-x-auto">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {shouldEmphasizeFirstParagraph ? firstParagraphSplit.rest : parsedContent.response}
+              </ReactMarkdown>
             </div>
           )}
           {isStreaming && (
