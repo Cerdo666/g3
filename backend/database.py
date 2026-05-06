@@ -2,7 +2,7 @@ import os
 import certifi
 from motor.motor_asyncio import AsyncIOMotorClient
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://luiscazorlacalderon:cerdo666322@oquery.dv9hpun.mongodb.net/")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 DB_NAME = os.getenv("MONGO_DB", "oncoquery")
 
 client: AsyncIOMotorClient = AsyncIOMotorClient(MONGO_URI, tlsCAFile=certifi.where())
