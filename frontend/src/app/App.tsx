@@ -59,8 +59,49 @@ const downloadResponse = (format: 'csv' | 'doc' | 'pdf', content: string) => {
   URL.revokeObjectURL(url);
 };
 
+const extractExportPayload = (format: 'csv' | 'doc' | 'pdf', content: string): string => {
+  if (format === 'csv') {
+    const csvBlock = content.match(/```csv\s*([\s\S]*?)```/i);
+    if (csvBlock?.[1]) return csvBlock[1].trim();
+
+    const genericBlock = content.match(/```([\s\S]*?)```/);
+    if (genericBlock?.[1] && genericBlock[1].includes(',')) return genericBlock[1].trim();
+
+    const tableLines = content
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.startsWith('|') && line.endsWith('|'));
+
+    if (tableLines.length >= 2) {
+      return tableLines
+        .filter(line => !/^(\|\s*[-:]+\s*)+\|$/.test(line.replace(/\s+/g, '')))
+        .map(line =>
+          line
+            .slice(1, -1)
+            .split('|')
+            .map(cell => `"${cell.trim().replace(/"/g, '""')}"`)
+            .join(',')
+        )
+        .join('\n');
+    }
+  }
+
+  return content.trim();
+};
+
+const looksLikeExportConfirmation = (content: string): boolean => {
+  const normalized = content.toLowerCase();
+  return (
+    normalized.includes('acabo de crear') ||
+    normalized.includes('archivo') ||
+    normalized.includes('carpeta de sesión') ||
+    normalized.includes('how to access') ||
+    normalized.includes('cómo acceder')
+  );
+};
+
 export default function App() {
-  const { isAuthenticated, userEmail, userName, userId, userRole, accessToken, setAuth, logout, restoreSession } = useAuth();
+  const { isAuthenticated, userEmail, userName, userId, userRole, accessToken, logout, restoreSession } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [showSignIn, setShowSignIn] = useState(false);
@@ -79,6 +120,15 @@ export default function App() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [chatSessions, setChatSessions] = useState<any[]>([]);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const MAX_INPUT_ROWS = 5;
+  const LINE_HEIGHT_PX = 24;
+
+  const resizeTextarea = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    const maxHeight = MAX_INPUT_ROWS * LINE_HEIGHT_PX;
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+  };
 
   // Load sessions from database
   const loadChatSessions = async () => {
@@ -198,10 +248,8 @@ export default function App() {
   }, [isAuthenticated, accessToken]);
 
   useEffect(() => {
-    if (location.pathname === '/' && isAuthenticated) {
-      navigate('/chat', { replace: true });
-    }
-  }, [location.pathname, isAuthenticated, navigate]);
+    resizeTextarea(inputRef.current);
+  }, [input]);
 
   // Save current session ID to sessionStorage when it changes
   useEffect(() => {
@@ -293,6 +341,7 @@ export default function App() {
     if (!sessionId) return;
 
     const userContent = input;
+    const previousAssistantMessage = [...messages].reverse().find((m) => m.type === 'ai' && m.content)?.content || '';
     const userMsg = { type: 'user', content: userContent };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
@@ -371,7 +420,10 @@ export default function App() {
         await saveMessage(sessionId, 'assistant', aiContent);
       }
       if (exportFormat && aiContent) {
-        downloadResponse(exportFormat, aiContent);
+        const currentPayload = extractExportPayload(exportFormat, aiContent);
+        const fallbackPayload = previousAssistantMessage ? extractExportPayload(exportFormat, previousAssistantMessage) : '';
+        const payload = looksLikeExportConfirmation(currentPayload) && fallbackPayload ? fallbackPayload : currentPayload;
+        downloadResponse(exportFormat, payload);
       }
       setIsLoading(false);
     }
@@ -434,8 +486,12 @@ export default function App() {
   }
 
   // ==================== RENDER PRINCIPAL ====================
+  if (location.pathname === '/') {
+    return <Navigate to={isAuthenticated ? '/chat' : '/login'} replace />;
+  }
+
   if (location.pathname === '/chat' && !isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return (
@@ -529,7 +585,7 @@ export default function App() {
             </div>
 
             {/* Input Bar */}
-            <div className="flex items-center gap-3 flex-shrink-0 w-full bg-white border border-gray-300 rounded-full px-4 py-1 shadow-sm focus-within:ring-2 focus-within:ring-[#662d3a] focus-within:border-transparent transition-shadow">
+            <div className="flex items-end gap-3 flex-shrink-0 w-full bg-white border border-gray-300 rounded-2xl px-4 py-2 shadow-sm focus-within:ring-2 focus-within:ring-[#662d3a] focus-within:border-transparent transition-shadow">
               <textarea
                 ref={inputRef}
                 value={input}
@@ -538,7 +594,22 @@ export default function App() {
                   resizeTextarea(e.target);
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.ctrlKey) {
+                  const isModifierEnter = e.ctrlKey || e.metaKey;
+                  if (e.key === 'Enter' && isModifierEnter) {
+                    e.preventDefault();
+                    const target = e.currentTarget;
+                    const start = target.selectionStart;
+                    const end = target.selectionEnd;
+                    const updated = `${input.slice(0, start)}\n${input.slice(end)}`;
+                    setInput(updated);
+                    requestAnimationFrame(() => {
+                      resizeTextarea(target);
+                      target.selectionStart = target.selectionEnd = start + 1;
+                    });
+                    return;
+                  }
+
+                  if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     handleSendMessage();
                   }
@@ -556,7 +627,7 @@ export default function App() {
                 }}
                 rows={1}
                 placeholder="Ask me anything about breast cancer proteins, variants, trials or recent literature..."
-                className="flex-1 py-2 text-sm bg-transparent outline-none placeholder:text-gray-400 disabled:opacity-50 resize-none overflow-y-auto max-h-32 leading-6"
+                className="flex-1 py-1 text-sm bg-transparent outline-none placeholder:text-gray-400 disabled:opacity-50 resize-none overflow-y-auto leading-6 min-h-[24px] max-h-[120px]"
                 disabled={isLoading}
               />
               <button 
