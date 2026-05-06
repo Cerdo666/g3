@@ -12,7 +12,7 @@ import History from './components/History';
 import ForgotPassword from './components/ForgotPassword';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
-import { Send, Menu, FileSpreadsheet, FileText, Download } from 'lucide-react';
+import { Send, Menu } from 'lucide-react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 
 // ── Hybrid API URL Detection ──────────────────────────────────────────
@@ -33,42 +33,23 @@ const API_URL = (() => {
 })();
 
 
-type ExportFormat = 'csv' | 'doc' | 'pdf' | 'xlsx';
-type ExportAsset = {
-  filename: string;
-  format: ExportFormat;
-  payload: string;
-  preview: string;
-};
-
-const detectExportFormat = (text: string): ExportFormat | null => {
+const detectExportFormat = (text: string): 'csv' | 'doc' | 'pdf' | null => {
   const lower = text.toLowerCase();
-  if (!/(export|exportable|descargar|archivo)/.test(lower)) return null;
-  if (lower.includes('xlsx') || lower.includes('xls') || lower.includes('excel') || lower.includes('hoja de cálculo')) return 'xlsx';
+  if (!lower.includes('export')) return null;
   if (lower.includes('csv')) return 'csv';
   if (lower.includes('word') || lower.includes('doc')) return 'doc';
   if (lower.includes('pdf')) return 'pdf';
   return null;
 };
 
-const isExportRequest = (text: string): boolean => /(export|exportable|descargar|archivo)/.test(text.toLowerCase());
-
-const requestsUnsupportedExport = (text: string): boolean => /(ppt|powerpoint|pptx)/.test(text.toLowerCase());
-
-const downloadResponse = (format: ExportFormat, content: string) => {
+const downloadResponse = (format: 'csv' | 'doc' | 'pdf', content: string) => {
   const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
   const baseName = `oncoquery-export-${timestamp}`;
   const payload = format === 'csv'
     ? `section,text\nresponse,"${content.replace(/"/g, '""').replace(/\n/g, ' ')}"`
     : content;
-  const mime = format === 'csv'
-    ? 'text/csv;charset=utf-8'
-    : format === 'pdf'
-      ? 'application/pdf'
-      : format === 'xlsx'
-        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        : 'application/msword';
-  const ext = format === 'csv' ? 'csv' : format === 'pdf' ? 'pdf' : format === 'xlsx' ? 'xlsx' : 'doc';
+  const mime = format === 'csv' ? 'text/csv;charset=utf-8' : format === 'pdf' ? 'application/pdf' : 'application/msword';
+  const ext = format === 'csv' ? 'csv' : format === 'pdf' ? 'pdf' : 'doc';
   const blob = new Blob([payload], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -78,7 +59,7 @@ const downloadResponse = (format: ExportFormat, content: string) => {
   URL.revokeObjectURL(url);
 };
 
-const extractExportPayload = (format: ExportFormat, content: string): string => {
+const extractExportPayload = (format: 'csv' | 'doc' | 'pdf', content: string): string => {
   if (format === 'csv') {
     const csvBlock = content.match(/```csv\s*([\s\S]*?)```/i);
     if (csvBlock?.[1]) return csvBlock[1].trim();
@@ -108,16 +89,6 @@ const extractExportPayload = (format: ExportFormat, content: string): string => 
   return content.trim();
 };
 
-const buildExportPreview = (format: ExportFormat, payload: string): string => {
-  if (format === 'doc' || format === 'xlsx') {
-    return payload
-      .replace(/```[\s\S]*?```/g, (block) => block.replace(/```[a-z]*/gi, '').replace(/```/g, ''))
-      .replace(/\|/g, ' | ')
-      .trim();
-  }
-  return payload.slice(0, 250);
-};
-
 const looksLikeExportConfirmation = (content: string): boolean => {
   const normalized = content.toLowerCase();
   return (
@@ -144,7 +115,6 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mcpServers, setMcpServers] = useState<string[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
-  const [exportAsset, setExportAsset] = useState<ExportAsset | null>(null);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -372,7 +342,6 @@ export default function App() {
 
     const userContent = input;
     const previousAssistantMessage = [...messages].reverse().find((m) => m.type === 'ai' && m.content)?.content || '';
-    const exportRequested = isExportRequest(userContent);
     const userMsg = { type: 'user', content: userContent };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
@@ -384,24 +353,6 @@ export default function App() {
     let aiContent = '';
     let aiToolCalls: any[] = [];
     const exportFormat = detectExportFormat(userContent);
-
-    if (requestsUnsupportedExport(userContent)) {
-      setMessages(prev => [...prev, {
-        type: 'ai',
-        content: 'Por ahora no exporto archivos .ppt/.pptx. Puedo exportar en .doc, .xlsx, .csv o .pdf.'
-      }]);
-      setIsLoading(false);
-      return;
-    }
-
-    if (exportRequested && !exportFormat) {
-      setMessages(prev => [...prev, {
-        type: 'ai',
-        content: '¿Qué formato exportable deseas exactamente? Indica uno: .doc, .xlsx, .csv o .pdf.'
-      }]);
-      setIsLoading(false);
-      return;
-    }
 
     try {
       const response = await fetch(`${API_URL}/chat`, {
@@ -472,13 +423,7 @@ export default function App() {
         const currentPayload = extractExportPayload(exportFormat, aiContent);
         const fallbackPayload = previousAssistantMessage ? extractExportPayload(exportFormat, previousAssistantMessage) : '';
         const payload = looksLikeExportConfirmation(currentPayload) && fallbackPayload ? fallbackPayload : currentPayload;
-        const timestamp = new Date().toISOString().slice(0, 10);
-        setExportAsset({
-          format: exportFormat,
-          filename: `oncoquery-export-${timestamp}.${exportFormat}`,
-          payload,
-          preview: buildExportPreview(exportFormat, payload),
-        });
+        downloadResponse(exportFormat, payload);
       }
       setIsLoading(false);
     }
@@ -612,35 +557,10 @@ export default function App() {
               </div>
               <span className="text-[#6b7280] hidden sm:inline">•</span>
               <span className="text-[#6b7280]">{mcpServers.length} MCP sources active</span>
+              <button className="ml-0 sm:ml-auto px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors flex-shrink-0">
+                Export ↓
+              </button>
             </div>
-
-            {exportAsset && (
-              <div className="mb-4 border border-gray-200 rounded-xl p-4 bg-gray-50 flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-[#662d3a]">
-                      {exportAsset.format === 'xlsx' ? <FileSpreadsheet className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-gray-900 truncate">{exportAsset.filename}</p>
-                      <p className="text-sm text-gray-500">Nombre archivo · {exportAsset.format.toUpperCase()}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => downloadResponse(exportAsset.format, exportAsset.payload)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-100 text-sm font-medium flex items-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    Descargar
-                  </button>
-                </div>
-                {(exportAsset.format === 'doc' || exportAsset.format === 'xlsx') && (
-                  <div className="bg-white border border-gray-200 rounded-lg p-3 text-sm text-gray-700 whitespace-pre-wrap">
-                    {exportAsset.preview}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto mb-6 min-h-0">

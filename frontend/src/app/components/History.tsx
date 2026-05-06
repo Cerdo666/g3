@@ -39,11 +39,6 @@ export default function History({ sessions, onClose, onLoadSession, onDeleteSess
     }
   };
 
-  const handleSessionSelect = (sessionId: string) => {
-    onLoadSession(sessionId);
-    onClose();
-  };
-
   return (
     <div className="h-screen w-screen flex flex-col bg-white">
       {/* Top bar */}
@@ -91,7 +86,7 @@ export default function History({ sessions, onClose, onLoadSession, onDeleteSess
             {sessions.map(session => (
               <li
                 key={session.session_id}
-                onClick={() => handleSessionSelect(session.session_id)}
+                onClick={() => onLoadSession(session.session_id)}
                 className="flex items-start justify-between border border-gray-200 rounded-lg px-5 py-4 hover:border-[#662d3a]/40 hover:bg-[#662d3a]/5 transition-colors cursor-pointer group"
               >
                 <div className="flex items-start gap-4 min-w-0 flex-1">
