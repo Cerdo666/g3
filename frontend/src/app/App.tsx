@@ -613,6 +613,17 @@ export default function App() {
                     e.preventDefault();
                     handleSendMessage();
                   }
+                  if (e.key === 'Enter' && e.ctrlKey) {
+                    e.preventDefault();
+                    const target = e.currentTarget;
+                    const start = target.selectionStart;
+                    const end = target.selectionEnd;
+                    const updated = `${input.slice(0, start)}\n${input.slice(end)}`;
+                    setInput(updated);
+                    requestAnimationFrame(() => {
+                      target.selectionStart = target.selectionEnd = start + 1;
+                    });
+                  }
                 }}
                 rows={1}
                 placeholder="Ask me anything about breast cancer proteins, variants, trials or recent literature..."
