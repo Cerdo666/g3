@@ -5,7 +5,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 DB_NAME = os.getenv("MONGO_DB", "oncoquery")
 
-client: AsyncIOMotorClient = AsyncIOMotorClient(MONGO_URI, tlsCAFile=certifi.where())
+#client: AsyncIOMotorClient = AsyncIOMotorClient(MONGO_URI, tlsCAFile=certifi.where())
+client: AsyncIOMotorClient = AsyncIOMotorClient(MONGO_URI, tls=False)
 db = client[DB_NAME]
 
 # Collections
